@@ -95,6 +95,7 @@ exports.signup = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Signup successful. Please verify your email.",
+      data: verifyToken,
     });
 
   } catch (err) {
@@ -141,6 +142,78 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 🚫 Already verified
+    if (user.isVerified) {
+      return res.status(400).json({
+        message: "Email already verified"
+      });
+    }
+
+    // 🔁 Generate new token
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+
+    user.emailVerifyToken = verifyToken;
+    user.emailVerifyExpire = Date.now() + 7 * 24 * 60 * 60 * 1000; // ✅ 7 days
+    await user.save();
+
+    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+
+    const emailHtml = `
+      <div style="font-family: Arial; padding: 20px;">
+        <h2>Hello ${user.firstname} 👋</h2>
+        <p>Please verify your email to activate your account.</p>
+
+        <a href="${verifyUrl}"
+           style="
+            display:inline-block;
+            padding:12px 20px;
+            background:#4CAF50;
+            color:#fff;
+            text-decoration:none;
+            border-radius:5px;
+            margin-top:10px;
+           ">
+          Verify Email
+        </a>
+
+        <p style="margin-top:20px;">
+          This link will expire in <b>7 days</b>.
+        </p>
+      </div>
+    `;
+
+    await sendEmail({
+      to: email,
+      subject: "Resend Email Verification",
+      html: emailHtml,
+    });
+
+    console.log("🔁 Verification email resent to:", email);
+
+    res.json({
+      success: true,
+      message: "Verification email resent successfully"
+    });
+
+  } catch (err) {
+    console.error("❌ Resend verification error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // ✅ ✅ LOGIN API
 exports.login = async (req, res) => {
