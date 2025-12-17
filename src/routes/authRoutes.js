@@ -1,5 +1,5 @@
 const express = require("express");
-const { signup, login , verifyEmail} = require("../controllers/authController");
+const { signup, login , verifyEmail, resendVerificationEmail} = require("../controllers/authController");
 const passport = require("passport");
 
 const router = express.Router();
@@ -7,6 +7,7 @@ const router = express.Router();
 router.post("/signup", signup);
 router.post("/login", login);
 router.get("/verify/:token", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
 
 
 // ✅ Google OAuth

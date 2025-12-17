@@ -59,26 +59,69 @@ const updateUserEducationScore = async (userId) => {
 // --------------------------------------------------
 // CREATE EDUCATION
 // --------------------------------------------------
+
+
+// exports.createEducation = async (req, res) => {
+//   try {
+//     const userId = req.headers["user-id"];
+//     if (!userId) return res.status(400).json({ message: "User ID missing in header" });
+
+//     const education = await Education.create({
+//       ...req.body,
+//       userId: userId,
+//     });
+
+//     // Recalculate scoring
+//     const score = await updateUserEducationScore(userId);
+
+//     return res.status(201).json({
+//       message: "Education added successfully",
+//       educationScore: score,
+//       data: education,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ message: "Error creating education", error: error.message });
+//   }
+// };
 exports.createEducation = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
-    if (!userId) return res.status(400).json({ message: "User ID missing in header" });
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in header" });
+    }
 
-    const education = await Education.create({
-      ...req.body,
-      userId: userId,
-    });
+    const { educations } = req.body;
 
-    // Recalculate scoring
+    // Validate array
+    if (!Array.isArray(educations) || educations.length === 0) {
+      return res.status(400).json({
+        message: "Educations must be a non-empty array",
+      });
+    }
+
+    // Attach userId to each education
+    const educationDocs = educations.map((edu) => ({
+      ...edu,
+      userId,
+    }));
+
+    // Insert many at once
+    const savedEducations = await Education.insertMany(educationDocs);
+
+    // Recalculate education score once
     const score = await updateUserEducationScore(userId);
 
     return res.status(201).json({
-      message: "Education added successfully",
+      message: "Educations added successfully",
       educationScore: score,
-      data: education,
+      data: savedEducations,
     });
+
   } catch (error) {
-    return res.status(500).json({ message: "Error creating education", error: error.message });
+    return res.status(500).json({
+      message: "Error creating educations",
+      error: error.message,
+    });
   }
 };
 
