@@ -1,6 +1,6 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
-const upload = require("../middlewares/upload");
+const upload = require("../middlewares/certificationUpload");
 const certificationController = require("../controllers/certificationController");
 const domaincontroller = require("../controllers/SkillIndex/domainController");
 const userDomainSkillcontroller = require("../controllers/SkillIndex/userDomainSkillController");
@@ -107,10 +107,14 @@ router.delete("/work/:id", deleteWorkExperience);
 // --------------------------------------------------
 // CERTIFICATIONS ROUTES
 // --------------------------------------------------
+const {
+  createMultipleCertifications,
+} = require("../controllers/certificationController");
+
 router.post(
-  "/certifications/bulk",
-  upload.array("certificateFiles", 10),
-  certificationController.createMultipleCertifications
+  "/certifications",
+  upload.array("files"), // 👈 name must match frontend
+  createMultipleCertifications
 );
 
 router.post("/certification", certificationController.createMultipleCertifications);
