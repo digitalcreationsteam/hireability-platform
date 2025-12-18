@@ -25,7 +25,7 @@ const calculateEducationPoints = (educationList) => {
     }
 
     // Master Degree
-    if (degree.includes("master") || degree.includes("m.tech") || degree.includes("msc")) {
+    if (degree.includes("master") || degree.includes("m.tech") || degree.includes("msc")|| degree.includes("mca")) {
       if (duration === 2) total += 120;
       if (duration === 1) total += 60;
     }

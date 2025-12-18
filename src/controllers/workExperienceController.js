@@ -1,26 +1,24 @@
-
 const WorkExperience = require("../models/workModel");
 const User = require("../models/userModel");
 
+/* ---------- SCORE LOGIC (unchanged) ---------- */
 const calculateWorkPoints = (workList) => {
   let total = 0;
 
   for (const exp of workList) {
     const years = exp.duration || 0;
 
-    total += years * 60;   // per year score
+    total += years * 60;
 
-    if (years >= 10) total += 200;  // senior-level bonus  
+    if (years >= 10) total += 200;
     else if (years >= 5) total += 100;
   }
 
   return total;
 };
 
-
 const updateUserWorkScore = async (userId) => {
   const workList = await WorkExperience.find({ userId });
-
   const workScore = calculateWorkPoints(workList);
 
   await User.findByIdAndUpdate(
@@ -32,28 +30,44 @@ const updateUserWorkScore = async (userId) => {
   return workScore;
 };
 
-exports.createWorkExperience = async (req, res) => {
+/* ---------- MULTIPLE CREATE API ---------- */
+exports.createMultipleWorkExperience = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
-    if (!userId)
+    if (!userId) {
       return res.status(400).json({ message: "User ID missing in header" });
+    }
 
-    const work = await WorkExperience.create({
-      ...req.body,
+    const { workExperiences } = req.body;
+
+    if (!Array.isArray(workExperiences) || workExperiences.length === 0) {
+      return res.status(400).json({
+        message: "workExperiences must be a non-empty array",
+      });
+    }
+
+    // Attach userId to each experience
+    const workDocs = workExperiences.map(exp => ({
+      ...exp,
       userId,
-    });
+    }));
 
+    // Bulk insert
+    const insertedWork = await WorkExperience.insertMany(workDocs);
+
+    // Update score once
     const score = await updateUserWorkScore(userId);
 
     return res.status(201).json({
-      message: "Work experience added successfully",
+      message: "Work experiences added successfully",
+      totalAdded: insertedWork.length,
       workScore: score,
-      data: work,
+      data: insertedWork,
     });
 
   } catch (error) {
     return res.status(500).json({
-      message: "Error creating work experience",
+      message: "Error creating work experiences",
       error: error.message,
     });
   }
