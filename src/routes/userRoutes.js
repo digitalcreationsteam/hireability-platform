@@ -15,21 +15,12 @@ const {
 } = require("../controllers/educationController");
 
 const {
-  createWorkExperience,
+  createMultipleWorkExperience,
   getWorkExperiences,
   getWorkExperienceById,
   updateWorkExperience,
   deleteWorkExperience,
 } = require("../controllers/workExperienceController");
-
-
-const {
-  createCertification,
-  getCertifications,
-  getCertificationById,
-  updateCertification,
-  deleteCertification
-} = require("../controllers/certificationController");
 
 const {
   createAward,
@@ -65,11 +56,6 @@ router.get("/profile", protect, (req, res) => {
   });
 });
 
-router.post(
-  "/certification",
-  upload.single("certificateFileUrl"),
-  certificationController.createCertification
-);
 
 router.post(
   "/importMcqFromExcel",
@@ -112,7 +98,7 @@ router.delete("/education/:id", deleteEducation);
 // --------------------------------------------------
 // WORK EXPERIENCE ROUTES
 // --------------------------------------------------
-router.post("/work", createWorkExperience);
+router.post("/work", createMultipleWorkExperience);
 router.get("/work", getWorkExperiences);
 router.get("/work/:id", getWorkExperienceById);
 router.put("/work/:id", updateWorkExperience);
@@ -121,11 +107,17 @@ router.delete("/work/:id", deleteWorkExperience);
 // --------------------------------------------------
 // CERTIFICATIONS ROUTES
 // --------------------------------------------------
-router.post("/certification", createCertification);
-router.get("/certification", getCertifications);
-router.get("/certification/:id", getCertificationById);
-router.put("/certification/:id", updateCertification);
-router.delete("/certification/:id", deleteCertification);
+router.post(
+  "/certifications/bulk",
+  upload.array("certificateFiles", 10),
+  certificationController.createMultipleCertifications
+);
+
+router.post("/certification", certificationController.createMultipleCertifications);
+router.get("/certification", certificationController.getCertifications);
+router.get("/certification/:id", certificationController.getCertificationById);
+router.put("/certification/:id", certificationController.updateCertification);
+router.delete("/certification/:id", certificationController.deleteCertification);
 
 // --------------------------------------------------
 // AWARDS ROUTES
