@@ -3,10 +3,7 @@ const path = require("path");
 const Certification = require("../models/certificationModel");
 const User = require("../models/userModel");
 
-// ==================================================================
-// FUNCTION: CERTIFICATION SCORING LOGIC
-// Each certification = 50 points
-// ==================================================================
+/* ===================== SCORING ===================== */
 const calculateCertificationPoints = (certList) => {
   let total = 0;
   for (const cert of certList) {
@@ -15,73 +12,85 @@ const calculateCertificationPoints = (certList) => {
   return total;
 };
 
-// ==================================================================
-// FUNCTION: UPDATE USER EXPERIENCE INDEX (CERTIFICATION PART)
-// ==================================================================
 const updateUserCertificationScore = async (userId) => {
   const certs = await Certification.find({ userId });
-
-  const certificationScore = calculateCertificationPoints(certs);
+  const score = calculateCertificationPoints(certs);
 
   await User.findByIdAndUpdate(
     userId,
-    { "experienceIndex.certificationScore": certificationScore },
+    { "experienceIndex.certificationScore": score },
     { new: true }
   );
 
-  return certificationScore;
+  return score;
 };
 
-// ==================================================================
-// CREATE FOLDER IF NOT EXISTS
-// ==================================================================
+/* ===================== FOLDER ===================== */
 const ensureFolder = (folderPath) => {
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
   }
 };
 
-// ==================================================================
-// CREATE CERTIFICATION
-// ==================================================================
-exports.createCertification = async (req, res) => {
+/* ===================== MULTIPLE CREATE ===================== */
+exports.createMultipleCertifications = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in header" });
+    }
 
-    // Create user-specific folder if not exists
+    const { certifications } = req.body;
+
+    if (!Array.isArray(certifications) || certifications.length === 0) {
+      return res.status(400).json({
+        message: "certifications must be a non-empty array",
+      });
+    }
+
+    // Create user folder
     const userFolder = path.join("uploads", "certifications", userId);
     ensureFolder(userFolder);
 
-    const fileUrl = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/certifications/${userId}/${req.file.filename}`
-      : null;
+    const files = req.files || [];
 
-    const payload = {
-      userId,
-      certificationName: req.body.certificationName,
-      issuer: req.body.issuer,
-      issueDate: req.body.issueDate,
-      credentialLink: req.body.credentialLink || null,
-      certificateFileUrl: fileUrl,
-      points: 50
-    };
+    const certDocs = certifications.map((cert, index) => {
+      const file = files[index];
 
-    const cert = await Certification.create(payload);
+      const fileUrl = file
+        ? `${req.protocol}://${req.get("host")}/uploads/certifications/${userId}/${file.filename}`
+        : null;
+
+      return {
+        userId,
+        certificationName: cert.certificationName,
+        issuer: cert.issuer,
+        issueDate: cert.issueDate,
+        credentialLink: cert.credentialLink || null,
+        certificateFileUrl: fileUrl,
+        points: 50,
+      };
+    });
+
+    const insertedCerts = await Certification.insertMany(certDocs);
 
     const score = await updateUserCertificationScore(userId);
 
     return res.status(201).json({
-      message: "Certification added successfully",
+      message: "Certifications added successfully",
+      totalAdded: insertedCerts.length,
       certificationScore: score,
-      data: cert,
+      data: insertedCerts,
     });
+
   } catch (error) {
     return res.status(500).json({
-      message: "Error creating certification",
+      message: "Error creating certifications",
       error: error.message,
     });
   }
 };
+
 
 // ==================================================================
 // GET ALL CERTIFICATIONS OF USER
