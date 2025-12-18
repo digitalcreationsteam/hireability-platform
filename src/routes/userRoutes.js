@@ -23,7 +23,7 @@ const {
 } = require("../controllers/workExperienceController");
 
 const {
-  createAward,
+  createMultipleAwards,
   getAwards,
   getAwardById,
   updateAward,
@@ -31,7 +31,7 @@ const {
 } = require("../controllers/awardController");
 
 const {
-  createProject,
+  createMultipleProjects,
   getProjects,
   getProjectById,
   updateProject,
@@ -122,7 +122,7 @@ router.delete("/certification/:id", certificationController.deleteCertification)
 // --------------------------------------------------
 // AWARDS ROUTES
 // --------------------------------------------------
-router.post("/awards", createAward);
+router.post("/awards", createMultipleAwards);
 router.get("/awards", getAwards);
 router.get("/awards/:id", getAwardById);
 router.put("/awards/:id", updateAward);
@@ -131,7 +131,7 @@ router.delete("/awards/:id", deleteAward);
 // --------------------------------------------------
 // PROJECTS ROUTES
 // --------------------------------------------------
-router.post("/projects", createProject);
+router.post("/projects", createMultipleProjects);
 router.get("/projects", getProjects);
 router.get("/projects/:id", getProjectById);
 router.put("/projects/:id", updateProject);

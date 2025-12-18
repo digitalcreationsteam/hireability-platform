@@ -1,10 +1,9 @@
 const Award = require("../models/awardModel");
 const User = require("../models/userModel");
 
-// --------------------------------------------------
-// FUNCTION: AWARD SCORING LOGIC
-// Each award = 50 points
-// --------------------------------------------------
+/* --------------------------------------------------
+   SCORING LOGIC
+-------------------------------------------------- */
 const calculateAwardPoints = (awardList) => {
   let total = 0;
   for (const award of awardList) {
@@ -13,12 +12,8 @@ const calculateAwardPoints = (awardList) => {
   return total;
 };
 
-// --------------------------------------------------
-// FUNCTION: UPDATE USER EXPERIENCE INDEX (AWARDS PART)
-// --------------------------------------------------
 const updateUserAwardScore = async (userId) => {
   const awards = await Award.find({ userId });
-
   const awardScore = calculateAwardPoints(awards);
 
   await User.findByIdAndUpdate(
@@ -30,32 +25,46 @@ const updateUserAwardScore = async (userId) => {
   return awardScore;
 };
 
-exports.createAward = async (req, res) => {
+/* --------------------------------------------------
+   MULTIPLE CREATE AWARDS
+-------------------------------------------------- */
+exports.createMultipleAwards = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in header" });
+    }
 
-    const payload = {
+    const { awards } = req.body;
+
+    if (!Array.isArray(awards) || awards.length === 0) {
+      return res.status(400).json({
+        message: "awards must be a non-empty array"
+      });
+    }
+
+    const awardDocs = awards.map(a => ({
       userId,
-      awardName: req.body.awardName,
-      description: req.body.description,
-      year: req.body.year,
+      awardName: a.awardName,
+      description: a.description,
+      year: a.year,
       points: 50
-    };
+    }));
 
-    const award = await Award.create(payload);
+    const insertedAwards = await Award.insertMany(awardDocs);
 
-    // update score
     const score = await updateUserAwardScore(userId);
 
     return res.status(201).json({
-      message: "Award added successfully",
+      message: "Awards added successfully",
+      totalAdded: insertedAwards.length,
       awardScore: score,
-      data: award
+      data: insertedAwards
     });
 
   } catch (error) {
     return res.status(500).json({
-      message: "Error creating award",
+      message: "Error creating awards",
       error: error.message
     });
   }
