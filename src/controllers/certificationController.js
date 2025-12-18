@@ -32,7 +32,6 @@ const ensureFolder = (folderPath) => {
   }
 };
 
-/* ===================== MULTIPLE CREATE ===================== */
 exports.createMultipleCertifications = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -47,10 +46,6 @@ exports.createMultipleCertifications = async (req, res) => {
         message: "certifications must be a non-empty array",
       });
     }
-
-    // Create user folder
-    const userFolder = path.join("uploads", "certifications", userId);
-    ensureFolder(userFolder);
 
     const files = req.files || [];
 
@@ -73,10 +68,9 @@ exports.createMultipleCertifications = async (req, res) => {
     });
 
     const insertedCerts = await Certification.insertMany(certDocs);
-
     const score = await updateUserCertificationScore(userId);
 
-    return res.status(201).json({
+    res.status(201).json({
       message: "Certifications added successfully",
       totalAdded: insertedCerts.length,
       certificationScore: score,
@@ -84,7 +78,7 @@ exports.createMultipleCertifications = async (req, res) => {
     });
 
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       message: "Error creating certifications",
       error: error.message,
     });
