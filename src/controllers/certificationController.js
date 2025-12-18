@@ -25,13 +25,7 @@ const updateUserCertificationScore = async (userId) => {
   return score;
 };
 
-/* ===================== FOLDER ===================== */
-const ensureFolder = (folderPath) => {
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath, { recursive: true });
-  }
-};
-
+/* ===================== CREATE MULTIPLE ===================== */
 exports.createMultipleCertifications = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -70,7 +64,7 @@ exports.createMultipleCertifications = async (req, res) => {
     const insertedCerts = await Certification.insertMany(certDocs);
     const score = await updateUserCertificationScore(userId);
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Certifications added successfully",
       totalAdded: insertedCerts.length,
       certificationScore: score,
@@ -78,7 +72,7 @@ exports.createMultipleCertifications = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error creating certifications",
       error: error.message,
     });
