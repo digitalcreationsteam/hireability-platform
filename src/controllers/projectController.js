@@ -1,10 +1,9 @@
 const Project = require("../models/projectModel");
 const User = require("../models/userModel");
 
-// --------------------------------------------------
-// FUNCTION: PROJECT SCORING LOGIC
-// Each project = 25 points
-// --------------------------------------------------
+/* --------------------------------------------------
+   SCORING LOGIC
+-------------------------------------------------- */
 const calculateProjectPoints = (projectList) => {
   let total = 0;
   for (const project of projectList) {
@@ -13,12 +12,8 @@ const calculateProjectPoints = (projectList) => {
   return total;
 };
 
-// --------------------------------------------------
-// FUNCTION: UPDATE USER EXPERIENCE INDEX (PROJECT PART)
-// --------------------------------------------------
 const updateUserProjectScore = async (userId) => {
   const projects = await Project.find({ userId });
-
   const projectScore = calculateProjectPoints(projects);
 
   await User.findByIdAndUpdate(
@@ -29,39 +24,53 @@ const updateUserProjectScore = async (userId) => {
 
   return projectScore;
 };
-exports.createProject = async (req, res) => {
+
+/* --------------------------------------------------
+   MULTIPLE CREATE PROJECTS
+-------------------------------------------------- */
+exports.createMultipleProjects = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in header" });
+    }
 
-    const payload = {
+    const { projects } = req.body;
+
+    if (!Array.isArray(projects) || projects.length === 0) {
+      return res.status(400).json({
+        message: "projects must be a non-empty array"
+      });
+    }
+
+    const projectDocs = projects.map(p => ({
       userId,
-      projectName: req.body.projectName,
-      role: req.body.role,
-      summary: req.body.summary,
-      outcome: req.body.outcome,
-      link: req.body.link,
+      projectName: p.projectName,
+      role: p.role,
+      summary: p.summary,
+      outcome: p.outcome,
+      link: p.link,
       points: 25
-    };
+    }));
 
-    const project = await Project.create(payload);
+    const insertedProjects = await Project.insertMany(projectDocs);
 
-    // update score
     const score = await updateUserProjectScore(userId);
 
     return res.status(201).json({
-      message: "Project added successfully",
+      message: "Projects added successfully",
+      totalAdded: insertedProjects.length,
       projectScore: score,
-      data: project
+      data: insertedProjects
     });
 
   } catch (error) {
     return res.status(500).json({
-      message: "Error creating project",
+      message: "Error creating projects",
       error: error.message
     });
   }
 };
-
 
 exports.getProjects = async (req, res) => {
   try {
