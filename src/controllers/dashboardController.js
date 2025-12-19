@@ -19,7 +19,7 @@ const calculateEducationPoints = (educationList) => {
     if (degree.includes("bachelor") || degree.includes("b.tech") || degree.includes("bsc")) {
       total += duration === 3 ? 180 : duration === 4 ? 240 : 0;
     }
-    if (degree.includes("master") || degree.includes("m.tech") || degree.includes("msc")) {
+    if (degree.includes("master") || degree.includes("m.tech") || degree.includes("msc") || degree.includes("mca")) {
       total += duration === 1 ? 60 : duration === 2 ? 120 : 0;
     }
     if (degree.includes("phd") || degree.includes("doctorate")) total += duration * 60;
