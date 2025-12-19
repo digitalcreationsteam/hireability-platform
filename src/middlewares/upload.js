@@ -2,41 +2,23 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const baseUploadDir = path.join(__dirname, "..", "..", "uploads", "certifications");
+const uploadDir = path.join(__dirname, "..", "..", "uploads");
+
+// ensure uploads folder exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const userId = req.headers["user-id"];
-
-    if (!userId) {
-      return cb(new Error("User ID missing in header"), null);
-    }
-
-    const userDir = path.join(baseUploadDir, userId);
-
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
-    }
-
-    cb(null, userDir);
+    cb(null, uploadDir); // ✅ ALWAYS a valid string
   },
-
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + "-" + file.originalname.replace(/\s+/g, "_");
+    const uniqueName = Date.now() + "-" + file.originalname;
     cb(null, uniqueName);
   },
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ["application/pdf", "image/png", "image/jpeg"];
-    if (!allowed.includes(file.mimetype)) {
-      return cb(new Error("Only PDF, PNG, JPG allowed"));
-    }
-    cb(null, true);
-  },
-});
+const upload = multer({ storage });
 
 module.exports = upload;

@@ -61,8 +61,7 @@ const calculateProjectPoints = (projectList) => {
 // ---------------------------
 const getDashboardByUserId = async (req, res) => {
   try {
-    const { userId } = req.params;
-
+    const userId = req.headers["user-id"];
     // Fetch all user-related data
     const educationList = await Education.find({ userId });
     const workList = await WorkExperience.find({ userId });

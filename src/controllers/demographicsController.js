@@ -24,15 +24,27 @@ exports.saveDemographics = async (req, res) => {
 // READ
 exports.getDemographicsByUser = async (req, res) => {
   try {
+    // Get userId from header
+    const userId = req.headers['user-id']; // or 'userid' based on your header key
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required in headers" });
+    }
+
     const demographics = await Demographics.findOne({
-      userId: req.params.userId,
+      userId: userId,
     });
 
-    res.json(demographics);
+    if (!demographics) {
+      return res.status(404).json({ message: "Demographics not found" });
+    }
+
+    res.status(200).json(demographics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // DELETE (Optional)
 exports.deleteDemographics = async (req, res) => {
