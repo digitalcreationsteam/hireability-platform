@@ -29,7 +29,7 @@ router.get("/profile", protect, (req, res) => {
 // =================================================
 // DASHBOARD
 // =================================================
-router.get("/dashboard/:userId", getDashboardByUserId);
+router.get("/dashboard", getDashboardByUserId);
 router.get("/experience_index", getDashboardByUserId);
 
 // =================================================
