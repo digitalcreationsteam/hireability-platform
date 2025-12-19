@@ -1,20 +1,19 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
-
+const uploadResume = require("../middlewares/uploadResume");
 // ================= CONTROLLERS =================
 const certificationController = require("../controllers/certificationController");
 const domainController = require("../controllers/SkillIndex/domainController");
 const userDomainSkillController = require("../controllers/SkillIndex/userDomainSkillController");
 const mcqImportController = require("../controllers/SkillIndex/mcqImportController");
 const { getDashboardByUserId } = require("../controllers/dashboardController");
-
 const educationController = require("../controllers/educationController");
 const workExperienceController = require("../controllers/workExperienceController");
 const awardController = require("../controllers/awardController");
 const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
-
+const userDocumentController= require("../controllers/userDocumentController");
 const router = express.Router();
 
 // =================================================
@@ -94,6 +93,13 @@ router.post(
   certificationController.createCertification
 );
 
+
+
+router.post(
+  "/resume",
+  uploadResume.single("resume"),
+  userDocumentController.uploadOrUpdateResume
+);
 
 router.get("/certification", certificationController.getCertifications);
 router.get("/certification", certificationController.getCertificationById);
