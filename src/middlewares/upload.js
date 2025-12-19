@@ -2,20 +2,36 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const uploadDir = path.join(__dirname, "..", "..", "uploads");
-
-// ensure uploads folder exists
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const baseUploadDir = path.join(__dirname, "..", "..", "uploads");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir); // ✅ ALWAYS a valid string
+    const userId = req.headers["user-id"];
+    if (!userId) {
+      return cb(new Error("User ID missing in headers"));
+    }
+
+    const userCertDir = path.join(
+      baseUploadDir,
+      userId,
+      "certifications"
+    );
+
+    if (!fs.existsSync(userCertDir)) {
+      fs.mkdirSync(userCertDir, { recursive: true });
+    }
+
+    cb(null, userCertDir);
   },
+
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + "-" + file.originalname;
-    cb(null, uniqueName);
+    const ext = path.extname(file.originalname);
+    const cleanName = path
+      .basename(file.originalname, ext)
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+
+    cb(null, `${Date.now()}-${cleanName}${ext}`);
   },
 });
 
