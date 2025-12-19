@@ -3,7 +3,7 @@ const Demographics = require("../models/demographicsModel");
 // CREATE or UPDATE (Upsert)
 exports.saveDemographics = async (req, res) => {
   try {
-    const { userId } = req.body;
+     const userId = req.headers["user-id"];
 
     const demographics = await Demographics.findOneAndUpdate(
       { userId },
