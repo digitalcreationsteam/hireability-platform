@@ -88,11 +88,12 @@ router.delete("/work/:id", workExperienceController.deleteWorkExperience);
 // CERTIFICATIONS (MULTIPLE + FILES)
 // =================================================
 // CERTIFICATIONS
-// router.post(
-//   "/certification",
-//   upload.any(),   // ✅ ONLY ONCE
-//   certificationController.createMultipleCertifications
-// );
+router.post(
+  "/certification",
+  upload.array("certificateFiles"), // multiple files
+  certificationController.createCertification
+);
+
 
 router.get("/certification", certificationController.getCertifications);
 router.get("/certification", certificationController.getCertificationById);

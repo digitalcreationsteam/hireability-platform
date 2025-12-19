@@ -35,11 +35,11 @@ const updateUserCertificationScore = async (userId) => {
 // ==================================================================
 // CREATE FOLDER IF NOT EXISTS
 // ==================================================================
-const ensureFolder = (folderPath) => {
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath, { recursive: true });
-  }
-};
+// const ensureFolder = (folderPath) => {
+//   if (!fs.existsSync(folderPath)) {
+//     fs.mkdirSync(folderPath, { recursive: true });
+//   }
+// };
 
 // ==================================================================
 // CREATE CERTIFICATION
@@ -47,41 +47,59 @@ const ensureFolder = (folderPath) => {
 exports.createCertification = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in headers" });
+    }
 
-    // Create user-specific folder if not exists
-    const userFolder = path.join("uploads", "certifications", userId);
-    ensureFolder(userFolder);
+    const {
+      certificationName = [],
+      issuer = [],
+      issueDate = [],
+      credentialLink = [],
+    } = req.body;
 
-    const fileUrl = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/certifications/${userId}/${req.file.filename}`
-      : null;
+    const files = req.files || [];
 
-    const payload = {
-      userId,
-      certificationName: req.body.certificationName,
-      issuer: req.body.issuer,
-      issueDate: req.body.issueDate,
-      credentialLink: req.body.credentialLink || null,
-      certificateFileUrl: fileUrl,
-      points: 50
-    };
+    if (!certificationName.length) {
+      return res.status(400).json({
+        message: "At least one certification is required",
+      });
+    }
 
-    const cert = await Certification.create(payload);
+    const payload = certificationName.map((_, index) => {
+      const file = files[index];
 
+      return {
+        userId,
+        certificationName: certificationName[index],
+        issuer: issuer[index],
+        issueDate: issueDate[index],
+        credentialLink: credentialLink[index] || null,
+        certificateFileUrl: file
+          ? `${req.protocol}://${req.get("host")}/uploads/${userId}/certifications/${file.filename}`
+          : null,
+
+        points: 50,
+      };
+    });
+
+    const savedCerts = await Certification.insertMany(payload);
     const score = await updateUserCertificationScore(userId);
 
     return res.status(201).json({
-      message: "Certification added successfully",
+      message: "Certifications added successfully",
+      count: savedCerts.length,
       certificationScore: score,
-      data: cert,
+      data: savedCerts,
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Error creating certification",
+      message: "Error creating certifications",
       error: error.message,
     });
   }
 };
+
 
 // ==================================================================
 // GET ALL CERTIFICATIONS OF USER
