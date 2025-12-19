@@ -109,23 +109,37 @@ exports.getCertifications = async (req, res) => {
 // ==================================================================
 exports.getCertificationById = async (req, res) => {
   try {
-    const cert = await Certification.findById(req.params.id);
+    // Get userId from headers
+    const userId = req.headers['user-id']; // use same key everywhere
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in headers" });
+    }
+
+    // Find certification by id AND userId (security check)
+    const cert = await Certification.findOne({
+      _id: req.params.id,
+      userId: userId,
+    });
 
     if (!cert) {
-      return res.status(404).json({ message: "Certification not found" });
+      return res.status(404).json({
+        message: "Certification not found or access denied",
+      });
     }
 
     return res.status(200).json({
       message: "Certification fetched",
-      data: cert
+      data: cert,
     });
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching certification",
-      error: error.message
+      error: error.message,
     });
   }
 };
+
 
 // ==================================================================
 // UPDATE CERTIFICATION

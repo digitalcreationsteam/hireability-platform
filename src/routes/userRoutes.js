@@ -95,7 +95,7 @@ router.delete("/work/:id", workExperienceController.deleteWorkExperience);
 // );
 
 router.get("/certification", certificationController.getCertifications);
-router.get("/certification/:id", certificationController.getCertificationById);
+router.get("/certification", certificationController.getCertificationById);
 router.put("/certification/:id", upload.single("file"), certificationController.updateCertification);
 router.delete("/certification/:id", certificationController.deleteCertification);
 
