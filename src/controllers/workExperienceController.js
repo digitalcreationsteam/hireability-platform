@@ -1,36 +1,54 @@
 const WorkExperience = require("../models/workModel");
 const User = require("../models/userModel");
+const { recalculateUserScore } = require("../services/recalculateUserScore");
 
-/* ---------- SCORE LOGIC (unchanged) ---------- */
-const calculateWorkPoints = (workList) => {
-  let total = 0;
+/* --------------------------------------------------
+   SCORE CALCULATION (SINGLE EXPERIENCE)
+-------------------------------------------------- */
+const calculateSingleWorkScore = (exp) => {
+  let score = 0;
+  const years = exp.duration || 0;
 
-  for (const exp of workList) {
-    const years = exp.duration || 0;
+  score += years * 60;
 
-    total += years * 60;
+  if (years >= 10) score += 200;
+  else if (years >= 5) score += 100;
 
-    if (years >= 10) total += 200;
-    else if (years >= 5) total += 100;
-  }
-
-  return total;
+  return score;
 };
 
+/* --------------------------------------------------
+   TOTAL WORK SCORE (FROM DB RECORDS)
+-------------------------------------------------- */
+const calculateTotalWorkScore = (workList) => {
+  return workList.reduce((sum, exp) => {
+    return sum + (exp.workScore || 0);
+  }, 0);
+};
+
+/* --------------------------------------------------
+   UPDATE USER TOTAL WORK SCORE
+-------------------------------------------------- */
 const updateUserWorkScore = async (userId) => {
   const workList = await WorkExperience.find({ userId });
-  const workScore = calculateWorkPoints(workList);
+
+  const totalWorkScore = calculateTotalWorkScore(workList);
 
   await User.findByIdAndUpdate(
     userId,
-    { "experienceIndex.workScore": workScore },
+    { "experienceIndex.workScore": totalWorkScore },
     { new: true }
   );
 
-  return workScore;
+  // 🔥 Recalculate final combined score
+  await recalculateUserScore(userId);
+
+  return totalWorkScore;
 };
 
-/* ---------- MULTIPLE CREATE API ---------- */
+/* --------------------------------------------------
+   CREATE MULTIPLE WORK EXPERIENCES
+-------------------------------------------------- */
 exports.createMultipleWorkExperience = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -46,22 +64,21 @@ exports.createMultipleWorkExperience = async (req, res) => {
       });
     }
 
-    // Attach userId to each experience
+    // ✅ Attach userId + calculate workScore per experience
     const workDocs = workExperiences.map(exp => ({
       ...exp,
       userId,
+      workScore: calculateSingleWorkScore(exp),
     }));
 
-    // Bulk insert
     const insertedWork = await WorkExperience.insertMany(workDocs);
 
-    // Update score once
-    const score = await updateUserWorkScore(userId);
+    const totalScore = await updateUserWorkScore(userId);
 
     return res.status(201).json({
       message: "Work experiences added successfully",
       totalAdded: insertedWork.length,
-      workScore: score,
+      totalWorkScore: totalScore,
       data: insertedWork,
     });
 
@@ -73,6 +90,9 @@ exports.createMultipleWorkExperience = async (req, res) => {
   }
 };
 
+/* --------------------------------------------------
+   GET ALL WORK EXPERIENCES
+-------------------------------------------------- */
 exports.getWorkExperiences = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -86,74 +106,97 @@ exports.getWorkExperiences = async (req, res) => {
     });
 
   } catch (error) {
-    return res.status(500).json({ message: "Error", error: error.message });
+    return res.status(500).json({
+      message: "Error fetching work experiences",
+      error: error.message,
+    });
   }
 };
 
-// --------------------------------------------------
-// GET SINGLE WORK EXPERIENCE
-// --------------------------------------------------
+/* --------------------------------------------------
+   GET SINGLE WORK EXPERIENCE
+-------------------------------------------------- */
 exports.getWorkExperienceById = async (req, res) => {
   try {
     const workExperience = await WorkExperience.findById(req.params.id);
 
     if (!workExperience) {
       return res.status(404).json({
-        message: "Work experience not found"
+        message: "Work experience not found",
       });
     }
 
     return res.status(200).json({
       message: "Work experience fetched successfully",
-      data: workExperience
+      data: workExperience,
     });
 
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching work experience",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-
+/* --------------------------------------------------
+   UPDATE WORK EXPERIENCE
+-------------------------------------------------- */
 exports.updateWorkExperience = async (req, res) => {
   try {
+    // 🔁 Recalculate workScore if duration is updated
+    if (req.body.duration !== undefined) {
+      req.body.workScore = calculateSingleWorkScore(req.body);
+    }
+
     const exp = await WorkExperience.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
 
-    if (!exp) return res.status(404).json({ message: "Work experience not found" });
+    if (!exp) {
+      return res.status(404).json({ message: "Work experience not found" });
+    }
 
-    const score = await updateUserWorkScore(exp.userId);
+    const totalScore = await updateUserWorkScore(exp.userId);
 
     return res.status(200).json({
       message: "Work experience updated successfully",
-      workScore: score,
+      totalWorkScore: totalScore,
       data: exp,
     });
 
   } catch (error) {
-    return res.status(500).json({ message: "Error updating work", error: error.message });
+    return res.status(500).json({
+      message: "Error updating work experience",
+      error: error.message,
+    });
   }
 };
 
-
+/* --------------------------------------------------
+   DELETE WORK EXPERIENCE
+-------------------------------------------------- */
 exports.deleteWorkExperience = async (req, res) => {
   try {
     const exp = await WorkExperience.findByIdAndDelete(req.params.id);
-    if (!exp) return res.status(404).json({ message: "Work not found" });
 
-    const score = await updateUserWorkScore(exp.userId);
+    if (!exp) {
+      return res.status(404).json({ message: "Work experience not found" });
+    }
+
+    const totalScore = await updateUserWorkScore(exp.userId);
 
     return res.status(200).json({
       message: "Work experience deleted successfully",
-      workScore: score,
+      totalWorkScore: totalScore,
     });
 
   } catch (error) {
-    return res.status(500).json({ message: "Error deleting work", error: error.message });
+    return res.status(500).json({
+      message: "Error deleting work experience",
+      error: error.message,
+    });
   }
 };

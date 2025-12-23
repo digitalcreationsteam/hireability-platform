@@ -40,6 +40,10 @@ const WorkSchema = new mongoose.Schema(
       trim: true,
     },
 
+    workScore: {
+      type: Number,
+      default: 0,
+    },
     // Duration auto-calculated if needed
     duration: {
       type: Number, // in years

@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const Certification = require("../models/certificationModel");
 const User = require("../models/userModel");
+const { recalculateUserScore } = require("../services/recalculateUserScore");
 
 // ==================================================================
 // FUNCTION: CERTIFICATION SCORING LOGIC
@@ -10,7 +11,7 @@ const User = require("../models/userModel");
 const calculateCertificationPoints = (certList) => {
   let total = 0;
   for (const cert of certList) {
-    total += cert.points || 50;
+    total += cert.certificationScore || 50;
   }
   return total;
 };
@@ -28,7 +29,7 @@ const updateUserCertificationScore = async (userId) => {
     { "experienceIndex.certificationScore": certificationScore },
     { new: true }
   );
-
+ await recalculateUserScore(userId);
   return certificationScore;
 };
 
@@ -79,7 +80,7 @@ exports.createCertification = async (req, res) => {
           ? `${req.protocol}://${req.get("host")}/uploads/${userId}/certifications/${file.filename}`
           : null,
 
-        points: 50,
+        certificationScore: 50,
       };
     });
 
@@ -88,6 +89,7 @@ exports.createCertification = async (req, res) => {
 
     return res.status(201).json({
       message: "Certifications added successfully",
+      status:true,
       count: savedCerts.length,
       certificationScore: score,
       data: savedCerts,

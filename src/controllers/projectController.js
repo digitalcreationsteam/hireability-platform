@@ -1,13 +1,13 @@
 const Project = require("../models/projectModel");
 const User = require("../models/userModel");
-
+const { recalculateUserScore } = require("../services/recalculateUserScore");
 /* --------------------------------------------------
    SCORING LOGIC
 -------------------------------------------------- */
 const calculateProjectPoints = (projectList) => {
   let total = 0;
   for (const project of projectList) {
-    total += project.points || 25;
+    total += project.projectScore || 25;
   }
   return total;
 };
@@ -21,7 +21,7 @@ const updateUserProjectScore = async (userId) => {
     { "experienceIndex.projectScore": projectScore },
     { new: true }
   );
-
+ await recalculateUserScore(userId);
   return projectScore;
 };
 
@@ -50,7 +50,7 @@ exports.createMultipleProjects = async (req, res) => {
       summary: p.summary,
       outcome: p.outcome,
       link: p.link,
-      points: 25
+      projectScore: 25
     }));
 
     const insertedProjects = await Project.insertMany(projectDocs);

@@ -50,7 +50,10 @@ const EducationSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
-
+    educationScore: {
+          type: Number,
+          default: 0
+        },
     // To store image/logo if needed (optional)
     schoolImage: {
       type: String,

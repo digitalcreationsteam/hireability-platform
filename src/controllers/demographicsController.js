@@ -49,10 +49,8 @@ exports.getDemographicsByUser = async (req, res) => {
 // DELETE (Optional)
 exports.deleteDemographics = async (req, res) => {
   try {
-    await Demographics.findOneAndDelete({
-      userId: req.params.userId,
-    });
-
+   const userId = req.headers["user-id"];
+   await Demographics.findOneAndDelete({userId});
     res.json({ message: "Demographics deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });
