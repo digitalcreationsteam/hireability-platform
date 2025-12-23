@@ -1,13 +1,13 @@
 const Award = require("../models/awardModel");
 const User = require("../models/userModel");
-
+const { recalculateUserScore } = require("../services/recalculateUserScore");
 /* --------------------------------------------------
    SCORING LOGIC
 -------------------------------------------------- */
 const calculateAwardPoints = (awardList) => {
   let total = 0;
   for (const award of awardList) {
-    total += award.points || 50;
+    total += award.awardScore || 50;
   }
   return total;
 };
@@ -21,7 +21,7 @@ const updateUserAwardScore = async (userId) => {
     { "experienceIndex.awardScore": awardScore },
     { new: true }
   );
-
+ await recalculateUserScore(userId);
   return awardScore;
 };
 
@@ -48,7 +48,7 @@ exports.createMultipleAwards = async (req, res) => {
       awardName: a.awardName,
       description: a.description,
       year: a.year,
-      points: 50
+      awardScore: 50
     }));
 
     const insertedAwards = await Award.insertMany(awardDocs);

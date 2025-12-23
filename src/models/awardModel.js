@@ -18,7 +18,7 @@ const awardSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  points: {
+  awardScore: {
     type: Number,
     default: 50   // each award = 50 points
   }

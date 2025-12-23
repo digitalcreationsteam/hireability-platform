@@ -26,7 +26,7 @@ const projectSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  points: {
+  projectScore: {
     type: Number,
     default: 25   // each project = 25 points
   }
