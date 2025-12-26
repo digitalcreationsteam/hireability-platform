@@ -16,22 +16,21 @@ passport.use(
 
         let user = await User.findOne({ email });
 
-        // ✅ IF USER DOES NOT EXIST → CREATE VERIFIED USER
         if (!user) {
           user = await User.create({
             firstname: profile.name.givenName,
             lastname: profile.name.familyName,
             email,
+            role: "student",            // ✅ DEFAULT ROLE
             socialLogin: "google",
-            isVerified: true,        // ✅ GOOGLE USERS ARE AUTO VERIFIED
-            password: undefined     // ✅ NO FAKE PASSWORD
+            isVerified: true,
+            password: "google_oauth",   // ✅ REQUIRED (see problem 2)
           });
         }
 
-        // ✅ GENERATE JWT
-        const token = generateToken(user._id);
+        // ✅ PASS FULL USER OBJECT
+        const token = generateToken(user);
 
-        // ✅ ATTACH TOKEN TO USER OBJECT FOR CALLBACK REDIRECT
         user.token = token;
 
         done(null, user);
@@ -41,3 +40,4 @@ passport.use(
     }
   )
 );
+

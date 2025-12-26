@@ -1,8 +1,11 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
+const { authorizeRoles } = require("../middlewares/roleMiddleware");
+
 const upload = require("../middlewares/upload");
 const uploadExcel = require("../middlewares/uploadExcel");
 const uploadResume = require("../middlewares/uploadResume");
+
 // ================= CONTROLLERS =================
 const certificationController = require("../controllers/certificationController");
 const domainController = require("../controllers/SkillIndex/domainController");
@@ -14,115 +17,307 @@ const workExperienceController = require("../controllers/workExperienceControlle
 const awardController = require("../controllers/awardController");
 const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
-const userDocumentController= require("../controllers/userDocumentController");
+const userDocumentController = require("../controllers/userDocumentController");
+
 const router = express.Router();
 
-// =================================================
-// USER PROFILE
-// =================================================
-router.get("/profile", protect, (req, res) => {
-  res.json({
-    success: true,
-    user: req.user
-  });
-});
 
 // =================================================
-// DASHBOARD
+// USER PROFILE (STUDENT)
 // =================================================
-router.get("/dashboard", getDashboardByUserId);
-router.get("/experience_index", getDashboardByUserId);
+router.get(
+  "/profile",
+  protect,
+  authorizeRoles("student"),
+  (req, res) => {
+    res.json({ success: true, user: req.user });
+  }
+);
 
 // =================================================
-// MCQ IMPORT
+// DASHBOARD (STUDENT)
+// =================================================
+router.get(
+  "/dashboard",
+  protect,
+  authorizeRoles("student"),
+  getDashboardByUserId
+);
+
+router.get(
+  "/experience_index",
+  protect,
+  authorizeRoles("student"),
+  getDashboardByUserId
+);
+
+// =================================================
+// MCQ IMPORT (ADMIN)
 // =================================================
 router.post(
   "/importMcqFromExcel",
+  protect,
+  authorizeRoles("admin"),
   uploadExcel.single("file"),
   mcqImportController.importMcqFromExcel
 );
+// =================================================
+// MCQ IMPORT (RECRUITER + ADMIN)
+// =================================================
+
+
 
 // =================================================
-// SKILL INDEX - DOMAIN
+// SKILL INDEX - DOMAIN (ADMIN ONLY)
 // =================================================
-router.post("/domain", domainController.createDomain);
-router.get("/domain", domainController.getAllDomains);
-router.get("/domain/:id", domainController.getDomainById);
-router.put("/domain/:id", domainController.updateDomain);
-router.delete("/domain/:id", domainController.deleteDomain);
+router.post(
+  "/domain",
+  protect,
+  authorizeRoles("admin"),
+  domainController.createDomain
+);
+
+router.get(
+  "/domain",
+  protect,
+  authorizeRoles("admin"),
+  domainController.getAllDomains
+);
+
+router.get(
+  "/domain/:id",
+  protect,
+  authorizeRoles("admin"),
+  domainController.getDomainById
+);
+
+router.put(
+  "/domain/:id",
+  protect,
+  authorizeRoles("admin"),
+  domainController.updateDomain
+);
+
+router.delete(
+  "/domain/:id",
+  protect,
+  authorizeRoles("admin"),
+  domainController.deleteDomain
+);
 
 // =================================================
-// USER DOMAIN SKILL
+// USER DOMAIN SKILL (STUDENT)
 // =================================================
-router.post("/userDomainSkill", userDomainSkillController.saveUserDomainSkill);
-router.get("/userDomainSkill/:userId", userDomainSkillController.getUserDomainSkills);
-router.get("/userDomainSkill/domain/:domainId", userDomainSkillController.getUsersByDomain);
-router.delete("/userDomainSkill/:id", userDomainSkillController.deleteUserDomainSkill);
+router.post(
+  "/userDomainSkill",
+  protect,
+  authorizeRoles("student"),
+  userDomainSkillController.saveUserDomainSkill
+);
+
+router.get(
+  "/userDomainSkill/:userId",
+  protect,
+  authorizeRoles("student"),
+  userDomainSkillController.getUserDomainSkills
+);
 
 // =================================================
-// DEMOGRAPHICS
+// VIEW USERS BY DOMAIN (RECRUITER + ADMIN)
 // =================================================
-router.post("/demographics", demographicsController.saveDemographics);
-router.get("/demographics", demographicsController.getDemographicsByUser);
-router.delete("/demographics/:userId", demographicsController.deleteDemographics);
+router.get(
+  "/userDomainSkill/domain/:domainId",
+  protect,
+  authorizeRoles("recruiter", "admin"),
+  userDomainSkillController.getUsersByDomain
+);
+
+router.delete(
+  "/userDomainSkill/:id",
+  protect,
+  authorizeRoles("student"),
+  userDomainSkillController.deleteUserDomainSkill
+);
 
 // =================================================
-// EDUCATION
+// DEMOGRAPHICS (STUDENT)
 // =================================================
-router.post("/education", educationController.createEducation);
-router.get("/education", educationController.getEducations);
-router.get("/education/:id", educationController.getEducationById);
-router.put("/education/:id", educationController.updateEducation);
-router.delete("/education/:id", educationController.deleteEducation);
+router.post(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.saveDemographics
+);
+
+router.get(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.getDemographicsByUser
+);
+
+router.delete(
+  "/demographics/:userId",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.deleteDemographics
+);
 
 // =================================================
-// WORK EXPERIENCE (MULTIPLE)
+// EDUCATION (STUDENT)
 // =================================================
-router.post("/work", workExperienceController.createMultipleWorkExperience);
-router.get("/work", workExperienceController.getWorkExperiences);
-router.get("/work/:id", workExperienceController.getWorkExperienceById);
-router.put("/work/:id", workExperienceController.updateWorkExperience);
-router.delete("/work/:id", workExperienceController.deleteWorkExperience);
+router.post(
+  "/education",
+  protect,
+  authorizeRoles("student"),
+  educationController.createEducation
+);
+
+router.get(
+  "/education",
+  protect,
+  authorizeRoles("student"),
+  educationController.getEducations
+);
+
+router.get(
+  "/education/:id",
+  protect,
+  authorizeRoles("student"),
+  educationController.getEducationById
+);
+
+router.put(
+  "/education/:id",
+  protect,
+  authorizeRoles("student"),
+  educationController.updateEducation
+);
+
+router.delete(
+  "/education/:id",
+  protect,
+  authorizeRoles("student"),
+  educationController.deleteEducation
+);
 
 // =================================================
-// CERTIFICATIONS (MULTIPLE + FILES)
+// WORK EXPERIENCE (STUDENT)
 // =================================================
-// CERTIFICATIONS
+router.post(
+  "/work",
+  protect,
+  authorizeRoles("student"),
+  workExperienceController.createMultipleWorkExperience
+);
+
+router.get(
+  "/work",
+  protect,
+  authorizeRoles("student"),
+  workExperienceController.getWorkExperiences
+);
+
+router.get(
+  "/work/:id",
+  protect,
+  authorizeRoles("student"),
+  workExperienceController.getWorkExperienceById
+);
+
+router.put(
+  "/work/:id",
+  protect,
+  authorizeRoles("student"),
+  workExperienceController.updateWorkExperience
+);
+
+router.delete(
+  "/work/:id",
+  protect,
+  authorizeRoles("student"),
+  workExperienceController.deleteWorkExperience
+);
+
+// =================================================
+// CERTIFICATIONS (STUDENT)
+// =================================================
+
 router.post(
   "/certification",
-  upload.array("certificateFiles"), // multiple files
+  protect,
+  authorizeRoles("student"),
+  upload.array("certificateFiles"),
   certificationController.createCertification
 );
 
+router.get(
+  "/certification",
+  protect,
+  authorizeRoles("student"),
+  certificationController.getCertifications
+);
 
+router.put(
+  "/certification/:id",
+  protect,
+  authorizeRoles("student"),
+  upload.single("file"),
+  certificationController.updateCertification
+);
 
+router.delete(
+  "/certification/:id",
+  protect,
+  authorizeRoles("student"),
+  certificationController.deleteCertification
+);
+
+// =================================================
+// RESUME (STUDENT)
+// =================================================
 router.post(
   "/resume",
+  protect,
+  authorizeRoles("student"),
   uploadResume.single("resume"),
   userDocumentController.uploadOrUpdateResume
 );
 
-router.get("/certification", certificationController.getCertifications);
-router.get("/certification", certificationController.getCertificationById);
-router.put("/certification/:id", upload.single("file"), certificationController.updateCertification);
-router.delete("/certification/:id", certificationController.deleteCertification);
+
 
 // =================================================
-// AWARDS (MULTIPLE)
+// AWARDS (STUDENT)
 // =================================================
-router.post("/awards", awardController.createMultipleAwards);
-router.get("/awards", awardController.getAwards);
-router.get("/awards/:id", awardController.getAwardById);
-router.put("/awards/:id", awardController.updateAward);
-router.delete("/awards/:id", awardController.deleteAward);
+router.post(
+  "/awards",
+  protect,
+  authorizeRoles("student"),
+  awardController.createMultipleAwards
+);
+
+router.get(
+  "/awards",
+  protect,
+  authorizeRoles("student"),
+  awardController.getAwards
+);
 
 // =================================================
-// PROJECTS (MULTIPLE)
+// PROJECTS (STUDENT)
 // =================================================
-router.post("/projects", projectController.createMultipleProjects);
-router.get("/projects", projectController.getProjects);
-router.get("/projects/:id", projectController.getProjectById);
-router.put("/projects/:id", projectController.updateProject);
-router.delete("/projects/:id", projectController.deleteProject);
+router.post(
+  "/projects",
+  protect,
+  authorizeRoles("student"),
+  projectController.createMultipleProjects
+);
+
+router.get(
+  "/projects",
+  protect,
+  authorizeRoles("student"),
+  projectController.getProjects
+);
 
 module.exports = router;

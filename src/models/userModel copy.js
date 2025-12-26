@@ -22,19 +22,24 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    // ✅ ROLE FIELD
-    role: {
+    socialLogin: {
       type: String,
-      enum: ["student", "recruiter", "admin"],
-      default: "student",
+      default: null,
     },
 
-    socialLogin: { type: String, default: null },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
 
-    isVerified: { type: Boolean, default: false },
+    emailVerifyToken: {
+      type: String,
+    },
+    
+    emailVerifyExpire: {
+      type: Date,
+    },
 
-    emailVerifyToken: String,
-    emailVerifyExpire: Date,
   },
   { timestamps: true }
 );
