@@ -1,6 +1,7 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
+const uploadExcel = require("../middlewares/uploadExcel");
 const uploadResume = require("../middlewares/uploadResume");
 // ================= CONTROLLERS =================
 const certificationController = require("../controllers/certificationController");
@@ -37,7 +38,7 @@ router.get("/experience_index", getDashboardByUserId);
 // =================================================
 router.post(
   "/importMcqFromExcel",
-  upload.single("file"),
+  uploadExcel.single("file"),
   mcqImportController.importMcqFromExcel
 );
 

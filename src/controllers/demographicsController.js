@@ -1,25 +1,88 @@
 const Demographics = require("../models/demographicsModel");
 
-// CREATE or UPDATE (Upsert)
+
 exports.saveDemographics = async (req, res) => {
   try {
-     const userId = req.headers["user-id"];
+    const userId = req.headers["user-id"];
 
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in header" });
+    }
+
+    const {
+      email,
+      phoneNumber,
+      fullName,
+      city,
+      state,
+      country,
+      phoneVisibleToRecruiters,
+    } = req.body;
+
+    // 🔒 Manual uniqueness check (for clean error messages)
+    if (email) {
+      const emailExists = await Demographics.findOne({
+        email,
+        userId: { $ne: userId },
+      });
+
+      if (emailExists) {
+        return res.status(409).json({
+          message: "Email already in use",
+        });
+      }
+    }
+
+    if (phoneNumber) {
+      const phoneExists = await Demographics.findOne({
+        phoneNumber,
+        userId: { $ne: userId },
+      });
+
+      if (phoneExists) {
+        return res.status(409).json({
+          message: "Phone number already in use",
+        });
+      }
+    }
+
+    // ✅ CREATE OR UPDATE
     const demographics = await Demographics.findOneAndUpdate(
       { userId },
       {
-        ...req.body,
-        phoneVisibleToRecruiters: req.body.phoneVisibleToRecruiters ?? false,
+        fullName,
+        email,
+        phoneNumber,
+        city,
+        state,
+        country,
+        phoneVisibleToRecruiters: phoneVisibleToRecruiters ?? false,
       },
-      { new: true, upsert: true }
+      {
+        new: true,
+        upsert: true,
+        runValidators: true, // ⭐ important
+      }
     );
 
-    res.json(demographics);
+    res.status(200).json({
+      message: "Demographics saved successfully",
+      data: demographics,
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    // 🧠 Mongo duplicate key fallback
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(409).json({
+        message: `${field} already exists`,
+      });
+    }
+
+    res.status(400).json({
+      message: err.message,
+    });
   }
 };
-
 
 // READ
 exports.getDemographicsByUser = async (req, res) => {
