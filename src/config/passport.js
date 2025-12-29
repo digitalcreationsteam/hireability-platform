@@ -18,12 +18,13 @@ passport.use(
 
         if (!user) {
           user = await User.create({
-            firstname: profile.name.givenName,
-            lastname: profile.name.familyName,
+            firstname: profile.name.givenName || "Google",
+            lastname: profile.name.familyName || "User",
             email,
             role: "student",
             socialLogin: "google",
             isVerified: true,
+            password: "google_oauth",
           });
         }
 
