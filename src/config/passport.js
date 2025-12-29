@@ -8,7 +8,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "/api/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -21,16 +21,13 @@ passport.use(
             firstname: profile.name.givenName,
             lastname: profile.name.familyName,
             email,
-            role: "student",            // ✅ DEFAULT ROLE
+            role: "student",
             socialLogin: "google",
             isVerified: true,
-            password: "google_oauth",   // ✅ REQUIRED (see problem 2)
           });
         }
 
-        // ✅ PASS FULL USER OBJECT
         const token = generateToken(user);
-
         user.token = token;
 
         done(null, user);
