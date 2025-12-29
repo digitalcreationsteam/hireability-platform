@@ -31,7 +31,7 @@ router.get(
   passport.authenticate("google", { session: false }),
   (req, res) => {
     res.redirect(
-      `http://localhost:3000/login-success?token=${req.user.token}`
+      `${process.env.GOOGLE_CALLBACK_URL}/login-success?token=${req.user.token}`
     );
   }
 );

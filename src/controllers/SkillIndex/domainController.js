@@ -1,4 +1,5 @@
 const Domain = require("../../models/domainModel");
+const SubDomain = require("../../models/subDomainModel");
 
 // CREATE
 exports.createDomain = async (req, res) => {
@@ -53,3 +54,38 @@ exports.deleteDomain = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.getSubDomainsByDomain = async (req, res) => {
+  try {
+    const { domainId } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(domainId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid domainId",
+      });
+    }
+
+    const subDomains = await SubDomain.find({
+      domainId,
+      isActive: true, // optional filter
+    })
+      .select("_id name")
+      .sort({ name: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: subDomains.length,
+      data: subDomains,
+    });
+  } catch (error) {
+    console.error("Get SubDomains Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+

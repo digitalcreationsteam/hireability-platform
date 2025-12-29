@@ -11,7 +11,7 @@ const certificationController = require("../controllers/certificationController"
 const domainController = require("../controllers/SkillIndex/domainController");
 const userDomainSkillController = require("../controllers/SkillIndex/userDomainSkillController");
 const mcqImportController = require("../controllers/SkillIndex/mcqImportController");
-// const skillAssessmentController = require("../controllers/SkillIndex/skillAssessmentController");
+const skillAssessmentController = require("../controllers/SkillIndex/skillAssessmentController");
 const { getDashboardByUserId } = require("../controllers/dashboardController");
 const educationController = require("../controllers/educationController");
 const workExperienceController = require("../controllers/workExperienceController");
@@ -74,14 +74,20 @@ router.post(
 router.post(
   "/domain",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("student"),
   domainController.createDomain
+);
+router.post(
+  "/by-domain/:domainId",
+  protect,
+  authorizeRoles("student"),
+  domainController.getSubDomainsByDomain
 );
 
 router.get(
   "/domain",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("student"),
   domainController.getAllDomains
 );
 
@@ -324,8 +330,8 @@ router.get(
 // =================================================
 // Assessment (STUDENT)
 // =================================================
-// router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
-// router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
-// router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
+router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
+router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
+router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 module.exports = router;
