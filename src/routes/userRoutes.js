@@ -130,7 +130,7 @@ router.post(
 );
 
 router.get(
-  "/userDomainSkill/:userId",
+  "/getUserDomainSkills",
   protect,
   authorizeRoles("student"),
   userDomainSkillController.getUserDomainSkills

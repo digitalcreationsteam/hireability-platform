@@ -1,40 +1,45 @@
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 
-// Add User Domain & SubDomain
+// Add and update User Domain & SubDomain
 exports.addUserDomainSubDomain = async (req, res) => {
   try {
     const { userId, domainId, subDomainId } = req.body;
 
     if (!userId || !domainId || !subDomainId) {
       return res.status(400).json({
-        message: "userId, domainId and subDomainId are required"
+        message: "userId, domainId and subDomainId are required",
       });
     }
 
-    const exists = await UserDomainSkill.findOne({
-      userId,
-      domainId,
-      subDomainId
+    const record = await UserDomainSkill.findOneAndUpdate(
+      { userId, domainId }, // match condition
+      {
+        $set: {
+          subDomainId,
+        },
+        $setOnInsert: {
+          skills: [], // only when creating new
+        },
+      },
+      {
+        new: true,      // return updated doc
+        upsert: true,  // insert if not exists
+      }
+    );
+
+    return res.status(200).json({
+      message: "Domain & SubDomain saved successfully",
+      data: record,
     });
 
-    if (exists) {
-      return res.status(409).json({
-        message: "Domain & SubDomain already added for this user"
-      });
-    }
-
-    const record = await UserDomainSkill.create({
-      userId,
-      domainId,
-      subDomainId,
-      skills: [] // initialize empty
-    });
-
-    res.status(201).json(record);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: err.message,
+    });
   }
 };
+
 // Update / Add Skills
 exports.updateUserDomainSkills = async (req, res) => {
   try {
