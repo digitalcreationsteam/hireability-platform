@@ -1,13 +1,34 @@
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 
 // CREATE or UPDATE (Upsert)
+// exports.saveUserDomainSkill = async (req, res) => {
+//   try {
+//     const { userId, domainId, subDomainId, skills } = req.body;
+
+//     const record = await UserDomainSkill.findOneAndUpdate(
+//       { userId, domainId, subDomainId },
+//       { skills },
+//       { new: true, upsert: true }
+//     );
+
+//     res.status(200).json(record);
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// };
 exports.saveUserDomainSkill = async (req, res) => {
   try {
     const { userId, domainId, subDomainId, skills } = req.body;
 
+    const updateData = {};
+
+    if (skills !== undefined) {
+      updateData.skills = skills;
+    }
+
     const record = await UserDomainSkill.findOneAndUpdate(
       { userId, domainId, subDomainId },
-      { skills },
+      { $setOnInsert: { userId, domainId, subDomainId }, $set: updateData },
       { new: true, upsert: true }
     );
 
