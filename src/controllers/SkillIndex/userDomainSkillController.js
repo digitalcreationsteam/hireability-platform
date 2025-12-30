@@ -3,10 +3,10 @@ const UserDomainSkill = require("../../models/userDomainSkillModel");
 // CREATE or UPDATE (Upsert)
 exports.saveUserDomainSkill = async (req, res) => {
   try {
-    const { userId, domainId, skills } = req.body;
+    const { userId, domainId, subDomainId, skills } = req.body;
 
     const record = await UserDomainSkill.findOneAndUpdate(
-      { userId, domainId },
+      { userId, domainId, subDomainId },
       { skills },
       { new: true, upsert: true }
     );
