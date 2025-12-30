@@ -1,6 +1,6 @@
 const Domain = require("../../models/domainModel");
 const SubDomain = require("../../models/subDomainModel");
-
+const mongoose = require('mongoose');
 // CREATE
 exports.createDomain = async (req, res) => {
   try {

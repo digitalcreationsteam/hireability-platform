@@ -79,8 +79,8 @@ router.post(
 );
 router.post(
   "/by-domain/:domainId",
-  protect,
-  authorizeRoles("student"),
+  // protect,
+  // authorizeRoles("student"),
   domainController.getSubDomainsByDomain
 );
 
