@@ -77,7 +77,8 @@ router.post(
   authorizeRoles("student"),
   domainController.createDomain
 );
-router.post(
+
+router.get(
   "/by-domain/:domainId",
   protect,
   authorizeRoles("student"),
