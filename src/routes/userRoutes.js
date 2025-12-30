@@ -117,10 +117,16 @@ router.delete(
 // USER DOMAIN SKILL (STUDENT)
 // =================================================
 router.post(
-  "/userDomainSkill",
+  "/updateUserDomainSkills",
   protect,
   authorizeRoles("student"),
-  userDomainSkillController.saveUserDomainSkill
+  userDomainSkillController.updateUserDomainSkills
+);
+router.post(
+  "/addUserDomainSubDomain",
+  protect,
+  authorizeRoles("student"),
+  userDomainSkillController.addUserDomainSubDomain
 );
 
 router.get(

@@ -1,42 +1,70 @@
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 
-// CREATE or UPDATE (Upsert)
-// exports.saveUserDomainSkill = async (req, res) => {
-//   try {
-//     const { userId, domainId, subDomainId, skills } = req.body;
+// Add User Domain & SubDomain
+exports.addUserDomainSubDomain = async (req, res) => {
+  try {
+    const { userId, domainId, subDomainId } = req.body;
 
-//     const record = await UserDomainSkill.findOneAndUpdate(
-//       { userId, domainId, subDomainId },
-//       { skills },
-//       { new: true, upsert: true }
-//     );
+    if (!userId || !domainId || !subDomainId) {
+      return res.status(400).json({
+        message: "userId, domainId and subDomainId are required"
+      });
+    }
 
-//     res.status(200).json(record);
-//   } catch (err) {
-//     res.status(400).json({ error: err.message });
-//   }
-// };
-exports.saveUserDomainSkill = async (req, res) => {
+    const exists = await UserDomainSkill.findOne({
+      userId,
+      domainId,
+      subDomainId
+    });
+
+    if (exists) {
+      return res.status(409).json({
+        message: "Domain & SubDomain already added for this user"
+      });
+    }
+
+    const record = await UserDomainSkill.create({
+      userId,
+      domainId,
+      subDomainId,
+      skills: [] // initialize empty
+    });
+
+    res.status(201).json(record);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+// Update / Add Skills
+exports.updateUserDomainSkills = async (req, res) => {
   try {
     const { userId, domainId, subDomainId, skills } = req.body;
 
-    const updateData = {};
-
-    if (skills !== undefined) {
-      updateData.skills = skills;
+    if (!userId || !domainId || !subDomainId || !skills) {
+      return res.status(400).json({
+        message: "userId, domainId, subDomainId and skills are required"
+      });
     }
 
     const record = await UserDomainSkill.findOneAndUpdate(
       { userId, domainId, subDomainId },
-      { $setOnInsert: { userId, domainId, subDomainId }, $set: updateData },
-      { new: true, upsert: true }
+      { $set: { skills } },
+      { new: true }
     );
+
+    if (!record) {
+      return res.status(404).json({
+        message: "Domain & SubDomain not found for this user"
+      });
+    }
 
     res.status(200).json(record);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
+
+
 
 // READ by user
 exports.getUserDomainSkills = async (req, res) => {
