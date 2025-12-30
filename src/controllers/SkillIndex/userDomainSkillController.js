@@ -66,19 +66,27 @@ exports.updateUserDomainSkills = async (req, res) => {
 
 
 
-// READ by user
+// READ user domains with subdomains & skills
 exports.getUserDomainSkills = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.headers["user-id"];
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "user-id header is required"
+      });
+    }
 
     const records = await UserDomainSkill.find({ userId })
-      .populate("domainId", "name");
+      .populate("domainId", "name")
+      .populate("subDomainId", "name");
 
-    res.json(records);
+    res.status(200).json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // READ by domain
 exports.getUsersByDomain = async (req, res) => {
