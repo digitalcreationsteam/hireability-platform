@@ -79,8 +79,8 @@ router.post(
 );
 router.post(
   "/by-domain/:domainId",
-  // protect,
-  // authorizeRoles("student"),
+  protect,
+  authorizeRoles("student"),
   domainController.getSubDomainsByDomain
 );
 
@@ -94,21 +94,21 @@ router.get(
 router.get(
   "/domain/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("student"),
   domainController.getDomainById
 );
 
 router.put(
   "/domain/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("student"),
   domainController.updateDomain
 );
 
 router.delete(
   "/domain/:id",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("student"),
   domainController.deleteDomain
 );
 
@@ -135,7 +135,7 @@ router.get(
 router.get(
   "/userDomainSkill/domain/:domainId",
   protect,
-  authorizeRoles("recruiter", "admin"),
+  authorizeRoles("recruiter", "admin" ,"student"),
   userDomainSkillController.getUsersByDomain
 );
 
