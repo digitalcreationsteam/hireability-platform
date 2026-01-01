@@ -6,7 +6,7 @@ const UserDomainSkill = require("../../models/userDomainSkillModel");
 // START TEST
 exports.startAssessment = async (req, res) => {
   try {
-    const { userId } = req.body;
+     const userId = req.headers["user-id"];
 
     // 1. Get user's selected domain & subdomain
     const userSkill = await UserDomainSkill.findOne({ userId });
