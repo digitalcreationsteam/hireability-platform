@@ -86,15 +86,46 @@ exports.startAssessment = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+exports.saveAnswer = async (req, res) => {
+  try {
+    const { attemptId, questionId, selectedOption } = req.body;
+
+    const attempt = await TestAttempt.findOne({
+      _id: attemptId,
+      status: "in_progress",
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!attempt) {
+      return res.status(400).json({ message: "Invalid or expired attempt" });
+    }
+
+    const question = attempt.questions.find(
+      (q) => q.questionId.toString() === questionId
+    );
+
+    if (!question) {
+      return res.status(404).json({ message: "Question not found in attempt" });
+    }
+
+    question.selectedOption = selectedOption;
+
+    await attempt.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Save Answer Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // SUBMIT TEST
 exports.submitAssessment = async (req, res) => {
   try {
     const { attemptId, answers } = req.body;
 
-    const attempt = await TestAttempt.findById(attemptId).populate(
-      "questions.questionId"
-    );
+    const attempt = await TestAttempt.findById(attemptId)
+      .populate("questions.questionId");
 
     if (!attempt) {
       return res.status(404).json({ message: "Assessment not found" });
@@ -112,12 +143,17 @@ exports.submitAssessment = async (req, res) => {
 
     let rawScore = 0;
 
-    attempt.questions.forEach((q, index) => {
-      const selected = answers[index];
-      q.selectedOption = selected;
+    attempt.questions.forEach((q) => {
+      const submitted = answers.find(
+        (a) => a.questionId === q.questionId._id.toString()
+      );
 
-      const correctIndex = q.questionId.correctAnswer;
-      q.isCorrect = selected === correctIndex;
+      if (!submitted) return;
+
+      q.selectedOption = submitted.selectedOption;
+
+      const correctAnswer = q.questionId.correctAnswer;
+      q.isCorrect = submitted.selectedOption === correctAnswer;
 
       if (q.isCorrect) rawScore += q.marks;
     });
@@ -125,8 +161,24 @@ exports.submitAssessment = async (req, res) => {
     attempt.rawSkillScore = rawScore;
     attempt.normalizedSkillScore = Math.round((rawScore / 350) * 1000);
     attempt.status = "completed";
+    attempt.submittedAt = new Date();
 
     await attempt.save();
+
+    // 🔥 UPDATE USER SKILL INDEX
+    await UserDomainSkill.updateOne(
+      {
+        userId: attempt.userId,
+        domainId: attempt.domainId,
+        subDomainId: attempt.subDomainId,
+      },
+      {
+        $set: { skillIndex: attempt.normalizedSkillScore },
+        $inc: { totalAttempts: 1 },
+        $setOnInsert: { createdAt: new Date() }
+      },
+      { upsert: true }
+    );
 
     res.json({
       rawSkillScore: attempt.rawSkillScore,
@@ -137,3 +189,4 @@ exports.submitAssessment = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
