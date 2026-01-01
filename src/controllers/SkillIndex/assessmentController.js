@@ -86,6 +86,48 @@ exports.startAssessment = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getAttemptQuestions = async (req, res) => {
+  try {
+    const { attemptId } = req.params; // get attemptId from URL params
+
+    if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+      return res.status(400).json({ message: "Invalid attempt ID" });
+    }
+
+    // 1. Find the attempt
+    const attempt = await TestAttempt.findById(attemptId);
+
+    if (!attempt) {
+      return res.status(404).json({ message: "Test attempt not found" });
+    }
+
+    // 2. Get all question IDs from the attempt
+    const questionIds = attempt.questions.map((q) => q.questionId);
+
+    // 3. Fetch the questions from the database
+    const questions = await McqQuestion.find({ _id: { $in: questionIds } });
+
+    // 4. Map the questions to hide correct answers
+    const formattedQuestions = questions.map((q) => ({
+      _id: q._id,
+      question: q.question,
+      options: [q.option1, q.option2, q.option3, q.option4],
+      marks: attempt.questions.find((a) => a.questionId.toString() === q._id.toString())
+        ?.marks,
+    }));
+
+    res.status(200).json({
+      attemptId: attempt._id,
+      durationMinutes: Math.ceil((attempt.expiresAt - attempt.createdAt) / (60 * 1000)),
+      questions: formattedQuestions,
+    });
+  } catch (error) {
+    console.error("Get Attempt Questions Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.saveAnswer = async (req, res) => {
   try {
     const { attemptId, questionId, selectedOption } = req.body;
