@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const TestAttempt = require("../models/testAttemptModel");
-const McqQuestion = require("../models/mcqQuestionModel");
-const UserDomainSkill = require("../models/userDomainSkillModel");
+const TestAttempt = require("../../models/testAttemptModel");
+const McqQuestion = require("../../models/mcqQuestionModel");
+const UserDomainSkill = require("../../models/userDomainSkillModel");
 
 // START TEST
 exports.startAssessment = async (req, res) => {
