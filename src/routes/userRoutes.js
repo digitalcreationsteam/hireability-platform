@@ -12,6 +12,7 @@ const domainController = require("../controllers/SkillIndex/domainController");
 const userDomainSkillController = require("../controllers/SkillIndex/userDomainSkillController");
 const mcqImportController = require("../controllers/SkillIndex/mcqImportController");
 const skillAssessmentController = require("../controllers/SkillIndex/skillAssessmentController");
+const assessmentController = require("../controllers/SkillIndex/assessmentController");
 const { getDashboardByUserId } = require("../controllers/dashboardController");
 const educationController = require("../controllers/educationController");
 const workExperienceController = require("../controllers/workExperienceController");
@@ -340,5 +341,9 @@ router.get(
 router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
 router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
 router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
+
+// Submit test
+router.post("/assessment/submit", protect, authorizeRoles("student"), assessmentController.submitAssessment);
+router.post("/assessment/start", protect, authorizeRoles("student"), assessmentController.startAssessment);
 
 module.exports = router;
