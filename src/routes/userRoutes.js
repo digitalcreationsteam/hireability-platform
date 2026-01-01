@@ -345,6 +345,6 @@ router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentCo
 // Submit test
 router.post("/assessment/submit", protect, authorizeRoles("student"), assessmentController.submitAssessment);
 router.post("/assessment/saveAnswer", protect, authorizeRoles("student"), assessmentController.saveAnswer);
-router.post("/assessment/start", protect, authorizeRoles("student"), assessmentController.startAssessment);
+router.get("/assessment/start", protect, authorizeRoles("student"), assessmentController.startAssessment);
 
 module.exports = router;
