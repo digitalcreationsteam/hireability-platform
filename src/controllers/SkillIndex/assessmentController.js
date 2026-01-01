@@ -141,7 +141,8 @@ exports.submitAssessment = async (req, res) => {
       return res.status(400).json({ message: "Assessment expired" });
     }
 
-    let rawScore = 0;
+    // ✅ SKILL INDEX DIRECT (OUT OF 300)
+    let skillIndex = 0;
 
     attempt.questions.forEach((q) => {
       const submitted = answers.find(
@@ -155,17 +156,18 @@ exports.submitAssessment = async (req, res) => {
       const correctAnswer = q.questionId.correctAnswer;
       q.isCorrect = submitted.selectedOption === correctAnswer;
 
-      if (q.isCorrect) rawScore += q.marks;
+      if (q.isCorrect) {
+        skillIndex += q.marks; // Easy 10, Medium 15, Hard 25
+      }
     });
 
-    attempt.rawSkillScore = rawScore;
-    attempt.normalizedSkillScore = Math.round((rawScore / 350) * 1000);
+    attempt.skillIndex = skillIndex; // ✅ max 300
     attempt.status = "completed";
     attempt.submittedAt = new Date();
 
     await attempt.save();
 
-    // 🔥 UPDATE USER SKILL INDEX
+    // ✅ UPDATE USER DOMAIN SKILL
     await UserDomainSkill.updateOne(
       {
         userId: attempt.userId,
@@ -173,16 +175,16 @@ exports.submitAssessment = async (req, res) => {
         subDomainId: attempt.subDomainId,
       },
       {
-        $set: { skillIndex: attempt.normalizedSkillScore },
+        $set: { skillIndex },
         $inc: { totalAttempts: 1 },
-        $setOnInsert: { createdAt: new Date() }
+        $setOnInsert: { createdAt: new Date() },
       },
       { upsert: true }
     );
 
     res.json({
-      rawSkillScore: attempt.rawSkillScore,
-      normalizedSkillScore: attempt.normalizedSkillScore,
+      skillIndex,
+      maxSkillIndex: 300,
     });
   } catch (error) {
     console.error("Submit Assessment Error:", error);
