@@ -70,7 +70,11 @@ const testAttemptSchema = new mongoose.Schema(
         },
       },
     ],
-
+    skillIndex: {
+      type: Number, // 0 – 350
+      default: 0,
+      index: true,
+    },
     rawSkillScore: {
       type: Number,
       default: 0,

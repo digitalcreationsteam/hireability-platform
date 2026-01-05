@@ -338,9 +338,9 @@ router.get(
 // =================================================
 // Assessment (STUDENT)
 // =================================================
-router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
-router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
-router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
+// router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
+// router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
+// router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 // Submit test
 router.post("/assessment/submit", protect, authorizeRoles("student"), assessmentController.submitAssessment);
