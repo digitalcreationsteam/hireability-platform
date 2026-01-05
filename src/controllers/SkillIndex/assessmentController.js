@@ -165,53 +165,89 @@ exports.saveAnswer = async (req, res) => {
 // SUBMIT TEST
 exports.submitAssessment = async (req, res) => {
   try {
-    const { attemptId, answers } = req.body;
+    console.log("===== SUBMIT ASSESSMENT CALLED =====");
+    console.log("REQ BODY:", req.body);
+    console.log("REQ PARAMS:", req.params);
+
+    const { attemptId } = req.body;
+
+    if (!attemptId) {
+      console.error("❌ attemptId missing in request body");
+      return res.status(400).json({ message: "attemptId is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+      console.error("❌ Invalid attemptId:", attemptId);
+      return res.status(400).json({ message: "Invalid attempt ID" });
+    }
+
+    console.log("✅ attemptId is valid:", attemptId);
 
     const attempt = await TestAttempt.findById(attemptId)
       .populate("questions.questionId");
 
     if (!attempt) {
+      console.error("❌ No attempt found for ID:", attemptId);
       return res.status(404).json({ message: "Assessment not found" });
     }
 
+    console.log("✅ Attempt found:", {
+      id: attempt._id.toString(),
+      status: attempt.status,
+      userId: attempt.userId.toString(),
+    });
+
+    // ✅ idempotency: already submitted
+    if (attempt.status === "completed") {
+      console.log("ℹ️ Attempt already completed. Returning existing result.");
+
+      return res.json({
+        attemptId,
+        skillIndex: attempt.skillIndex,
+        maxSkillIndex: 300,
+      });
+    }
+
     if (attempt.status !== "in_progress") {
-      return res.status(400).json({ message: "Assessment already submitted" });
+      console.error("❌ Invalid attempt state:", attempt.status);
+      return res.status(400).json({ message: "Invalid assessment state" });
     }
 
-    if (new Date() > attempt.expiresAt) {
-      attempt.status = "expired";
-      await attempt.save();
-      return res.status(400).json({ message: "Assessment expired" });
-    }
-
-    // ✅ SKILL INDEX DIRECT (OUT OF 300)
     let skillIndex = 0;
+    let answeredCount = 0;
 
-    attempt.questions.forEach((q) => {
-      const submitted = answers.find(
-        (a) => a.questionId === q.questionId._id.toString()
-      );
+    attempt.questions.forEach((q, index) => {
+      if (q.selectedOption == null) {
+        console.log(`Q${index + 1}: Not answered`);
+        return;
+      }
 
-      if (!submitted) return;
+      answeredCount++;
 
-      q.selectedOption = submitted.selectedOption;
-
-      const correctAnswer = q.questionId.correctAnswer;
-      q.isCorrect = submitted.selectedOption === correctAnswer;
+      q.isCorrect = q.selectedOption === q.questionId.correctAnswer;
 
       if (q.isCorrect) {
-        skillIndex += q.marks; // Easy 10, Medium 15, Hard 25
+        skillIndex += q.marks;
+        console.log(`Q${index + 1}: ✅ Correct (+${q.marks})`);
+      } else {
+        console.log(`Q${index + 1}: ❌ Wrong`);
       }
     });
 
-    attempt.skillIndex = skillIndex; // ✅ max 300
+    console.log("📊 Score calculation completed:", {
+      answeredCount,
+      skillIndex,
+    });
+
+    attempt.skillIndex = skillIndex;
     attempt.status = "completed";
     attempt.submittedAt = new Date();
 
     await attempt.save();
+    await recalculateUserScore(attempt.userId);
+    console.log("✅ Attempt saved as completed");
 
-    // ✅ UPDATE USER DOMAIN SKILL
-    await UserDomainSkill.updateOne(
+    const skillUpdateResult = await UserDomainSkill.updateOne(
       {
         userId: attempt.userId,
         domainId: attempt.domainId,
@@ -220,17 +256,21 @@ exports.submitAssessment = async (req, res) => {
       {
         $set: { skillIndex },
         $inc: { totalAttempts: 1 },
-        $setOnInsert: { createdAt: new Date() },
       },
       { upsert: true }
     );
 
+    console.log("✅ UserDomainSkill updated:", skillUpdateResult);
+
+    console.log("===== SUBMIT ASSESSMENT SUCCESS =====");
+
     res.json({
+      attemptId,
       skillIndex,
       maxSkillIndex: 300,
     });
   } catch (error) {
-    console.error("Submit Assessment Error:", error);
+    console.error("🔥 Submit Assessment Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
