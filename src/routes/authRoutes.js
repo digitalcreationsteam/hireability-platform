@@ -2,6 +2,10 @@ const express = require("express");
 const {
   signup,
   login,
+  forgotPassword,
+  logout,
+  changePassword,
+  resetPassword,
   verifyEmail,
   resendVerificationEmail
 } = require("../controllers/authController");

@@ -7,6 +7,7 @@ const Certification = require("../models/certificationModel");
 const Award = require("../models/awardModel");
 const Project = require("../models/projectModel");
 const UserScore = require("../models/userScoreModel");
+// const documents = require("../models/userDocumentModel");
 
 exports.getDashboardByUserId = async (req, res) => {
   try {
