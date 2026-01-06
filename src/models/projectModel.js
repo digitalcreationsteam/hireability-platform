@@ -28,7 +28,7 @@ const projectSchema = new mongoose.Schema({
   },
   projectScore: {
     type: Number,
-    default: 3   // each project = 25 points
+    default: 3   // each project = 3 points
   }
 }, { timestamps: true });
 

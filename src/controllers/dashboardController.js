@@ -80,7 +80,7 @@ exports.getDashboardByUserId = async (req, res) => {
         experienceIndexScore,
         experienceIndexTotal,
         skillIndexScore,
-        skillIndexTotal: 350,
+        skillIndexTotal: 300,
         hireabilityIndex
       }
     });
