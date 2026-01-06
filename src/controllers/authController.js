@@ -5,104 +5,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 
-// exports.signup = async (req, res) => {
-//   try {
-//     const { firstname, lastname, email, password } = req.body;
 
-//     if (!firstname || !lastname || !email || !password) {
-//       return res.status(400).json({ message: "All fields are required" });
-//     }
-
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(409).json({ message: "Email already registered" });
-//     }
-
-//     const verifyToken = crypto.randomBytes(32).toString("hex");
-
-//     const user = await User.create({
-//       firstname,
-//       lastname,
-//       email,
-//       password,
-//       isVerified: false,
-//       emailVerifyToken: verifyToken,
-//       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
-//     });
-
-//     console.log("✅ User created:", user._id);
-//     console.log("✅ Verify token:", verifyToken);
-//     console.log("✅ Token expires:", new Date(user.emailVerifyExpire));
-//     console.log("✅ User created with ID:", user._id);
-    
-//     // ⭐ CHECK IF FIELDS WERE SAVED
-//     const savedUser = await User.findById(user._id);
-//     console.log("🔍 Saved user data:");
-//     console.log("  - emailVerifyToken:", savedUser.emailVerifyToken);
-//     console.log("  - emailVerifyExpire:", savedUser.emailVerifyExpire);
-//     console.log("  - isVerified:", savedUser.isVerified);
-    
-//     // Update this line - should point to frontend
-//     const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
-//     console.log("✅ Verification URL:", verifyUrl);
-
-//     const emailHtml = `
-//       <div style="font-family: Arial; padding: 20px;">
-//         <h2>Welcome ${firstname} 👋</h2>
-//         <p>Please verify your email to activate your account.</p>
-
-//         <a href="${verifyUrl}"
-//            style="
-//             display:inline-block;
-//             padding:12px 20px;
-//             background:#4CAF50;
-//             color:#fff;
-//             text-decoration:none;
-//             border-radius:5px;
-//             margin-top:10px;
-//            ">
-//           Verify Email
-//         </a>
-
-//         <p style="margin-top:20px;">
-//           This link will expire in <b>15 minutes</b>.
-//         </p>
-//       </div>
-//     `;
-
-//     console.log("📧 Attempting to send email to:", email);
-//     console.log("📧 Using EMAIL_USER:", process.env.EMAIL_USER);
-
-//     try {
-//       await sendEmail({
-//         to: email,
-//         subject: "Verify Your Email",
-//         html: emailHtml,
-//       });
-//       console.log("✅ ✅ Email sent successfully!");
-//     } catch (emailError) {
-//       console.error("❌ ❌ EMAIL FAILED:", emailError.message);
-//       console.error("Full error:", emailError);
-      
-//       // Don't fail signup if email fails
-//       return res.status(201).json({
-//         success: true,
-//         message: "Signup successful but verification email failed. Please contact support.",
-//         debug: emailError.message // Remove this in production
-//       });
-//     }
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Signup successful. Please verify your email.",
-//       data: verifyToken,
-//     });
-
-//   } catch (err) {
-//     console.error("Signup Error:", err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 exports.signup = async (req, res) => {
   try {
@@ -300,4 +203,137 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 🔐 Generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins
+    await user.save();
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Reset Your Password",
+      html: `
+        <h2>Hello ${user.firstname}</h2>
+        <p>Click below to reset your password:</p>
+        <a href="${resetUrl}">Reset Password</a>
+        <p>This link will expire in 15 minutes.</p>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message: "Password reset link sent to email",
+    });
+
+  } catch (err) {
+    console.error("Forgot Password Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password reset successful",
+    });
+
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user.id).select("+password");
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Old password incorrect" });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password changed successfully",
+    });
+
+  } catch (err) {
+    console.error("Change Password Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+
 

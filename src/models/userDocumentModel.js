@@ -13,6 +13,11 @@ const userDocumentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    profileUrl: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
