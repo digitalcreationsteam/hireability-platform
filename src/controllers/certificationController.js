@@ -6,12 +6,12 @@ const { recalculateUserScore } = require("../services/recalculateUserScore");
 
 // ==================================================================
 // FUNCTION: CERTIFICATION SCORING LOGIC
-// Each certification = 50 points
+// Each certification = 5 points
 // ==================================================================
 const calculateCertificationPoints = (certList) => {
   let total = 0;
   for (const cert of certList) {
-    total += cert.certificationScore || 50;
+    total += cert.certificationScore || 5;
   }
   return total;
 };
@@ -80,7 +80,7 @@ exports.createCertification = async (req, res) => {
           ? `${req.protocol}://${req.get("host")}/uploads/${userId}/certifications/${file.filename}`
           : null,
 
-        certificationScore: 50,
+        certificationScore: 5,
       };
     });
 

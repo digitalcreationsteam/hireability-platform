@@ -7,7 +7,7 @@ const { recalculateUserScore } = require("../services/recalculateUserScore");
 const calculateProjectPoints = (projectList) => {
   let total = 0;
   for (const project of projectList) {
-    total += project.projectScore || 25;
+    total += project.projectScore || 3;
   }
   return total;
 };
@@ -50,7 +50,7 @@ exports.createMultipleProjects = async (req, res) => {
       summary: p.summary,
       outcome: p.outcome,
       link: p.link,
-      projectScore: 25
+      projectScore: 3
     }));
 
     const insertedProjects = await Project.insertMany(projectDocs);

@@ -20,7 +20,7 @@ const awardSchema = new mongoose.Schema({
   },
   awardScore: {
     type: Number,
-    default: 50   // each award = 50 points
+    default: 5   // each award = 50 points
   }
 }, { timestamps: true });
 

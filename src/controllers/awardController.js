@@ -7,7 +7,7 @@ const { recalculateUserScore } = require("../services/recalculateUserScore");
 const calculateAwardPoints = (awardList) => {
   let total = 0;
   for (const award of awardList) {
-    total += award.awardScore || 50;
+    total += award.awardScore || 5;
   }
   return total;
 };
@@ -48,7 +48,7 @@ exports.createMultipleAwards = async (req, res) => {
       awardName: a.awardName,
       description: a.description,
       year: a.year,
-      awardScore: 50
+      awardScore: 5
     }));
 
     const insertedAwards = await Award.insertMany(awardDocs);
