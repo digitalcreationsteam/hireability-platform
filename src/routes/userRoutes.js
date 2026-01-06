@@ -296,9 +296,16 @@ router.post(
   protect,
   authorizeRoles("student"),
   uploadResume.single("resume"),
-  userDocumentController.uploadOrUpdateResume
+  userDocumentController.uploadResume
 );
 
+router.post(
+  "/profile",
+  protect,
+  authorizeRoles("student"),
+  uploadResume.single("profile"),
+  userDocumentController.uploadProfile
+);
 
 
 // =================================================
