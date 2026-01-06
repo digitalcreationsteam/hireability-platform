@@ -5,14 +5,40 @@ const { recalculateUserScore } = require("../services/recalculateUserScore");
 /* --------------------------------------------------
    SCORE CALCULATION (SINGLE EXPERIENCE)
 -------------------------------------------------- */
+// const calculateSingleWorkScore = (exp) => {
+//   let score = 0;
+//   const years = exp.duration || 0;
+
+//   score += years * 60;
+
+//   if (years >= 10) score += 200;
+//   else if (years >= 5) score += 100;
+
+//   return score;
+// };
+/* --------------------------------------------------
+   SCORE CALCULATION (SINGLE EXPERIENCE)
+-------------------------------------------------- */
 const calculateSingleWorkScore = (exp) => {
   let score = 0;
-  const years = exp.duration || 0;
 
-  score += years * 60;
+  const months = exp.duration || 0; // duration in months
+  const roleType = (exp.typeOfRole || "").toLowerCase();
 
-  if (years >= 10) score += 200;
-  else if (years >= 5) score += 100;
+  const pointsPerMonthMap = {
+    internship: 5,
+    contract: 5,
+    freelance: 3,
+    part_time: 4,
+    "part-time": 4,
+    full_time: 10,
+    "full-time": 10,
+    entrepreneurship: 5,
+  };
+
+  const pointsPerMonth = pointsPerMonthMap[roleType] || 0;
+
+  score = months * pointsPerMonth;
 
   return score;
 };
