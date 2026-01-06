@@ -34,7 +34,7 @@ const certificationSchema = new mongoose.Schema({
 
   certificationScore: {
     type: Number,
-    default: 50, // Each certification = 50 points
+    default: 5, // Each certification = 50 points
   },
 
 }, { timestamps: true });
