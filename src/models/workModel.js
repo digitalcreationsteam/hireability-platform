@@ -39,7 +39,11 @@ const WorkSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
-
+    typeofRole: {
+          type: String,
+          required: false,
+          trim: true,
+        },
     workScore: {
       type: Number,
       default: 0,
