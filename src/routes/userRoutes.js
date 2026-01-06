@@ -5,6 +5,7 @@ const { authorizeRoles } = require("../middlewares/roleMiddleware");
 const upload = require("../middlewares/upload");
 const uploadExcel = require("../middlewares/uploadExcel");
 const uploadResume = require("../middlewares/uploadResume");
+const uploadProfile = require("../middlewares/uploadProfile");
 
 // ================= CONTROLLERS =================
 const certificationController = require("../controllers/certificationController");
@@ -296,15 +297,15 @@ router.post(
   protect,
   authorizeRoles("student"),
   uploadResume.single("resume"),
-  userDocumentController.uploadResume
+  userDocumentController.uploadOrUpdateResume
 );
 
 router.post(
   "/profile",
   protect,
   authorizeRoles("student"),
-  uploadResume.single("profile"),
-  userDocumentController.uploadProfile
+  uploadProfile.single("profile"),
+  userDocumentController.uploadOrUpdateProfile
 );
 
 
