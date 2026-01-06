@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
       return cb(new Error("User ID missing in headers"));
     }
 
-    const docDir = path.join(baseUploadDir, userId, "documents");
+    const docDir = path.join(baseUploadDir, userId, "documents" ,"resume");
     fs.mkdirSync(docDir, { recursive: true });
 
     cb(null, docDir);

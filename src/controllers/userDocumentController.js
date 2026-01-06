@@ -13,7 +13,7 @@ exports.uploadOrUpdateResume = async (req, res) => {
       return res.status(400).json({ message: "Resume file is required" });
     }
 
-    const resumeUrl = `${req.protocol}://${req.get("host")}/uploads/${userId}/documents/${req.file.filename}`;
+    const resumeUrl = `${req.protocol}://${req.get("host")}/uploads/${userId}/documents/resume/${req.file.filename}`;
 
     let document = await UserDocument.findOne({ userId });
 

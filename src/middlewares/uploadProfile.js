@@ -18,21 +18,28 @@ const storage = multer.diskStorage({
   },
 
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-resume.pdf`);
+    const ext = path.extname(file.originalname); // .png .jpg .jpeg
+    cb(null, `${Date.now()}-profile${ext}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype !== "application/pdf") {
-    return cb(new Error("Only PDF files are allowed"), false);
+  const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(
+      new Error("Only PNG, JPG, JPEG files are allowed"),
+      false
+    );
   }
+
   cb(null, true);
 };
 
-const uploadResume = multer({
+const uploadProfile = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
-module.exports = uploadResume;
+module.exports = uploadProfile;
