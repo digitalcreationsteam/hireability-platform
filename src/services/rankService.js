@@ -1,43 +1,60 @@
-const UserScore = require("../models/UserScore");
+const UserScore = require("../models/userScoreModel");
 
-/**
- * Recalculate ranks based on hireabilityIndex
- */
-async function recalculateRanks() {
-  // Fetch all users sorted by hireabilityIndex (DESC)
-  const scores = await UserScore.find({})
-    .sort({ hireabilityIndex: -1 })
-    .select("hireabilityIndex city state country");
+exports.recalculateRanks = async () => {
 
-  let globalRank = 1;
-  const cityMap = {};
-  const stateMap = {};
-  const countryMap = {};
+  /* 🔹 GLOBAL RANK */
+  const globalUsers = await UserScore.find()
+    .sort({ hireabilityIndex: -1 });
 
-  for (const score of scores) {
-    // -------- Global Rank --------
-    score.globalRank = globalRank++;
-
-    // -------- City Rank --------
-    if (score.city) {
-      cityMap[score.city] = (cityMap[score.city] || 0) + 1;
-      score.cityRank = cityMap[score.city];
-    }
-
-    // -------- State Rank --------
-    if (score.state) {
-      stateMap[score.state] = (stateMap[score.state] || 0) + 1;
-      score.stateRank = stateMap[score.state];
-    }
-
-    // -------- Country Rank --------
-    if (score.country) {
-      countryMap[score.country] = (countryMap[score.country] || 0) + 1;
-      score.countryRank = countryMap[score.country];
-    }
-
-    await score.save({ validateBeforeSave: false });
+  for (let i = 0; i < globalUsers.length; i++) {
+    await UserScore.updateOne(
+      { _id: globalUsers[i]._id },
+      { globalRank: i + 1 }
+    );
   }
-}
 
-module.exports = { recalculateRanks };
+  /* 🔹 COUNTRY RANK */
+  const countries = await UserScore.distinct("country");
+
+  for (const country of countries) {
+    const users = await UserScore.find({ country })
+      .sort({ hireabilityIndex: -1 });
+
+    for (let i = 0; i < users.length; i++) {
+      await UserScore.updateOne(
+        { _id: users[i]._id },
+        { countryRank: i + 1 }
+      );
+    }
+  }
+
+  /* 🔹 STATE RANK */
+  const states = await UserScore.distinct("state");
+
+  for (const state of states) {
+    const users = await UserScore.find({ state })
+      .sort({ hireabilityIndex: -1 });
+
+    for (let i = 0; i < users.length; i++) {
+      await UserScore.updateOne(
+        { _id: users[i]._id },
+        { stateRank: i + 1 }
+      );
+    }
+  }
+
+  /* 🔹 CITY RANK */
+  const cities = await UserScore.distinct("city");
+
+  for (const city of cities) {
+    const users = await UserScore.find({ city })
+      .sort({ hireabilityIndex: -1 });
+
+    for (let i = 0; i < users.length; i++) {
+      await UserScore.updateOne(
+        { _id: users[i]._id },
+        { cityRank: i + 1 }
+      );
+    }
+  }
+};

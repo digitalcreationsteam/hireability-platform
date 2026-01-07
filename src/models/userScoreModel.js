@@ -8,19 +8,18 @@ const userScoreSchema = new mongoose.Schema({
     required: true
   },
 
-  city: { type: String },
-  countryRank: { type: Number },
+  city: String,
+  cityRank: Number,
 
-  state: { type: String },
-  stateRank: { type: Number },
+  state: String,
+  stateRank: Number,
 
-  country: { type: String },
-  cityRank: { type: Number },
+  country: String,
+  countryRank: Number,
 
-  global: { type: String },
-  globalRank: { type: Number },
+  global: String,
+  globalRank: Number,
 
-  
   educationScore: { type: Number, default: 0 },
   workScore: { type: Number, default: 0 },
   certificationScore: { type: Number, default: 0 },
@@ -33,13 +32,17 @@ const userScoreSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+/* 🔥 Trigger rank recalculation AFTER save/update */
+userScoreSchema.post("save", async function () {
+  const { recalculateRanks } = require("../services/rankService");
+  await recalculateRanks(this.userId);
+});
 
-// 🔥 Trigger after hireabilityIndex updates
-userScoreSchema.post("save", async function (doc, next) {
-  if (doc.isModified("hireabilityIndex")) {
-    await recalculateRanks();
+userScoreSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) {
+    const { recalculateRanks } = require("../services/rankService");
+    await recalculateRanks(doc.userId);
   }
-  next();
 });
 
 module.exports = mongoose.model("UserScore", userScoreSchema);
