@@ -28,14 +28,14 @@ const router = express.Router();
 // =================================================
 // USER PROFILE (STUDENT)
 // =================================================
-router.get(
-  "/profile",
-  protect,
-  authorizeRoles("student"),
-  (req, res) => {
-    res.json({ success: true, user: req.user });
-  }
-);
+// router.get(
+//   "/profile",
+//   protect,
+//   authorizeRoles("student"),
+//   (req, res) => {
+//     res.json({ success: true, user: req.user });
+//   }
+// );
 
 // =================================================
 // DASHBOARD (STUDENT)
@@ -304,7 +304,7 @@ router.post(
   "/profile",
   protect,
   authorizeRoles("student"),
-  uploadProfile.single("profile"),
+  uploadProfile.single("avatar"),
   userDocumentController.uploadOrUpdateProfile
 );
 
@@ -342,6 +342,16 @@ router.get(
   authorizeRoles("student"),
   projectController.getProjects
 );
+
+// =================================================
+// RANKING (STUDENT)
+// =================================================
+
+
+
+
+
+
 
 // =================================================
 // Assessment (STUDENT)
