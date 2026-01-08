@@ -3,12 +3,25 @@ const passport = require("passport");
 const axios = require("axios");
 const crypto = require("crypto");
 
+// const {
+//   signup,
+//   login,
+//   verifyEmail,
+//   resendVerificationEmail,
+// } = require("../controllers/authController");
+
+
 const {
   signup,
   login,
   verifyEmail,
   resendVerificationEmail,
+  forgotPasswordNew,
+  verifyResetCode,
+  resetPasswordNew,
+  logout,
 } = require("../controllers/authController");
+
 
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
@@ -22,6 +35,12 @@ router.post("/signup", signup);
 router.post("/login", login);
 router.get("/verify/:token", verifyEmail);
 router.post("/resend-verification", resendVerificationEmail);
+
+
+/* ---------- FORGOT PASSWORD (OTP) ---------- */
+router.post("/forgot-password", forgotPasswordNew);
+router.post("/verify-reset-otp", verifyResetCode);
+router.post("/reset-password", resetPasswordNew);
 
 /* =================================================
    GOOGLE OAUTH (PASSPORT – WORKING)
