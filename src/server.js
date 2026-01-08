@@ -16,7 +16,7 @@ app.use(
     origin: "http://localhost:3000", // frontend URL
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "user-id",],
+    allowedHeaders: ["Content-Type", "Authorization", "user-id", "attemptid"],
   })
 );
 // app.use(cors());

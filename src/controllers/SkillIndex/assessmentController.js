@@ -4,6 +4,7 @@ const McqQuestion = require("../../models/mcqQuestionModel");
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 const { recalculateUserScore } = require("../../services/recalculateUserScore");
 
+
 // START TEST
 exports.startAssessment = async (req, res) => {
   try {
@@ -275,3 +276,106 @@ exports.submitAssessment = async (req, res) => {
   }
 };
 
+
+// RETAKE TEST ========================
+exports.retakeAssessment = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+    const { domainId, subDomainId, isPaid } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!domainId || !subDomainId) {
+      return res.status(400).json({
+        message: "domainId and subDomainId are required",
+      });
+    }
+
+    // 1️⃣ Get or create retake limit
+    let retakeLimit = await RetakeLimit.findOne({
+      userId,
+      domainId,
+      subDomainId,
+    });
+
+    if (!retakeLimit) {
+      retakeLimit = await RetakeLimit.create({
+        userId,
+        domainId,
+        subDomainId,
+        freeUsed: 0,
+        paidUsed: 0,
+      });
+    }
+
+    // 2️⃣ Validate retake rules
+    if (!isPaid && retakeLimit.freeUsed >= 1) {
+      return res.status(403).json({
+        message: "Free retake already used",
+        requirePayment: true,
+      });
+    }
+
+    if (isPaid && retakeLimit.paidUsed >= 1) {
+      return res.status(403).json({
+        message: "No retakes remaining",
+      });
+    }
+
+    // 3️⃣ Expire any running attempt
+    await TestAttempt.updateMany(
+      {
+        userId,
+        domainId,
+        subDomainId,
+        status: "in_progress",
+      },
+      { status: "expired" }
+    );
+
+    // 4️⃣ Create new attempt
+    const durationMinutes = 25;
+    const expiresAt = new Date(
+      Date.now() + durationMinutes * 60 * 1000
+    );
+
+    const newAttempt = await TestAttempt.create({
+      userId,
+      domainId,
+      subDomainId,
+      testStatus: isPaid ? "paid" : "free",
+      status: "in_progress",
+      expiresAt,
+      totalQuestions: 20,
+      durationMinutes,
+      questions: [],
+      skillIndex: 0,
+      rawSkillScore: 0,
+      normalizedSkillScore: 0,
+    });
+
+    // 5️⃣ Update counters
+    if (isPaid) {
+      retakeLimit.paidUsed += 1;
+    } else {
+      retakeLimit.freeUsed += 1;
+    }
+
+    await retakeLimit.save();
+
+    // 6️⃣ Response
+    return res.status(201).json({
+      message: "Retake started",
+      attemptId: newAttempt._id,
+      expiresAt,
+      freeRetakesLeft: 1 - retakeLimit.freeUsed,
+      paidRetakesLeft: 1 - retakeLimit.paidUsed,
+    });
+
+  } catch (err) {
+    console.error("Retake assessment error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
