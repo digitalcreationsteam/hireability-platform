@@ -5,13 +5,12 @@ const validator = require("validator");
 const userSchema = new mongoose.Schema(
   {
     firstname: { type: String, required: true, trim: true },
-    
+
     lastname: {
       type: String,
       trim: true,
-      default: "", 
+      default: "",
     },
-
 
     email: {
       type: String,
@@ -41,9 +40,18 @@ const userSchema = new mongoose.Schema(
 
     emailVerifyToken: String,
     emailVerifyExpire: Date,
+
+    /* ================= FORGOT PASSWORD (OTP) ================= */
+    forgotPasswordOTP: {
+      type: String,
+    },
+    forgotPasswordOTPExpire: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
+/* ============================================================= */
 
 // ✅ ✅ ✅ WORKING PRE SAVE HOOK (NO NEXT!)
 userSchema.pre("save", async function () {
@@ -52,6 +60,11 @@ userSchema.pre("save", async function () {
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
+
+// ✅ PASSWORD MATCH METHOD
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 // ✅ PASSWORD MATCH METHOD
 userSchema.methods.matchPassword = async function (enteredPassword) {
