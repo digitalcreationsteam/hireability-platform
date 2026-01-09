@@ -80,6 +80,12 @@ const testAttemptSchema = new mongoose.Schema(
       default: 0,
     },
 
+    testStatus: {
+      type: String,
+      enum: ["free", "paid"],
+      default: "free",
+    },
+
     normalizedSkillScore: {
       type: Number,
       default: 0,
