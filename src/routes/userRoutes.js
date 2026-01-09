@@ -356,4 +356,6 @@ router.post("/assessment/saveAnswer", protect, authorizeRoles("student"), assess
 router.post("/assessment/start", protect, authorizeRoles("student"), assessmentController.startAssessment);
 router.get("/assessment/getAttemptQuestions/:attemptId", protect, authorizeRoles("student"), assessmentController.getAttemptQuestions);
 
+router.post("/assessment/retake", protect, authorizeRoles("student"), assessmentController.retakeAssessment);
+
 module.exports = router;
