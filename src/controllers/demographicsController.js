@@ -1,4 +1,6 @@
 const Demographics = require("../models/demographicsModel");
+const UserScore = require("../models/userScoreModel");
+
 
 
 exports.saveDemographics = async (req, res) => {
@@ -65,8 +67,22 @@ exports.saveDemographics = async (req, res) => {
       }
     );
 
+    
+    await UserScore.findOneAndUpdate(
+      { userId },
+      {
+        city,
+        state,
+        country,
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    );
+
     res.status(200).json({
-      message: "Demographics saved successfully",
+      message: "Demographics saved and UserScore location updated",
       data: demographics,
     });
   } catch (err) {
