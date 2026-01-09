@@ -8,7 +8,7 @@ const Award = require("../models/awardModel");
 const Project = require("../models/projectModel");
 const UserScore = require("../models/userScoreModel");
 const UserDomainSkill = require("../models/userDomainSkillModel");
-// const documents = require("../models/userDocumentModel");
+const UserDocument = require("../models/userDocumentModel");
 
 exports.getDashboardByUserId = async (req, res) => {
   try {
@@ -18,7 +18,7 @@ exports.getDashboardByUserId = async (req, res) => {
     }
 
     /* --------------------------------
-       FETCH RAW DATA (NO CALCULATION)
+       FETCH RAW DATA
     -------------------------------- */
     const [
       demographics,
@@ -29,7 +29,8 @@ exports.getDashboardByUserId = async (req, res) => {
       projects,
       userScore,
       topUser,
-      skillsDoc
+      skillDocs,
+      documents
     ] = await Promise.all([
       Demographics.find({ userId }).lean(),
       Education.find({ userId }).lean(),
@@ -38,12 +39,14 @@ exports.getDashboardByUserId = async (req, res) => {
       Award.find({ userId }).lean(),
       Project.find({ userId }).lean(),
       UserScore.findOne({ userId }).lean(),
-      UserDomainSkill.findOne({ userId }).lean(),
 
       UserScore.findOne({})
         .sort({ experienceIndexScore: -1 })
         .select("experienceIndexScore")
-        .lean()
+        .lean(),
+
+      UserDomainSkill.find({ userId }).lean(),
+      UserDocument.findOne({ userId }).lean()
     ]);
 
     /* --------------------------------
@@ -56,17 +59,13 @@ exports.getDashboardByUserId = async (req, res) => {
     const experienceIndexTotal =
       topUser?.experienceIndexScore || experienceIndexScore || 0;
 
-
-      const globalrank = userScore?.globalrank?? 0;
-    const countryrank = userScore?.countryrank || 0;
-    const cityrank= userScore?.cityrank || 0;
-        const universityrank= userScore?.universityrank || 0;
-
-const skill = UserDomainSkill?.Skills || 0;
-
+    /* --------------------------------
+       FLATTEN SKILLS
+    -------------------------------- */
+    const skills = skillDocs?.flatMap(doc => doc.skills) || [];
 
     /* --------------------------------
-       RESPONSE (SAME STRUCTURE YOU WANT)
+       RESPONSE
     -------------------------------- */
     res.json({
       userId,
@@ -81,7 +80,7 @@ const skill = UserDomainSkill?.Skills || 0;
       },
 
       points: {
-        demographics: 0, // 
+        demographics: 0,
         education: userScore?.educationScore || 0,
         workExperience: userScore?.workScore || 0,
         certifications: userScore?.certificationScore || 0,
@@ -99,17 +98,20 @@ const skill = UserDomainSkill?.Skills || 0;
       },
 
       rank: {
-         globalrank: userScore?.globalRank || 0,
-         countryRank: userScore?.countryRank || 0, 
-         stateRank: userScore?.stateRank || 0, 
-         cityRank: userScore?.cityRank || 0, 
-
-         universityrank: userScore?.universityrank || 0,
-        
+        globalRank: userScore?.globalRank || 0,
+        countryRank: userScore?.countryRank || 0,
+        stateRank: userScore?.stateRank || 0,
+        cityRank: userScore?.cityRank || 0,
+        universityRank: userScore?.universityrank || 0
       },
 
-       skill: {
-        skills: skillsDoc?.skills || []
+      skills: {
+        list: skills
+      },
+
+      documents: {
+        resumeUrl: documents?.resumeUrl || null,
+        profileUrl: documents?.profileUrl || null
       }
     });
 
