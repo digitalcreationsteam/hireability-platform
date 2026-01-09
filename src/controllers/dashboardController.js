@@ -87,7 +87,7 @@ exports.getDashboardByUserId = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Dashboard Error:", err);
+    console.error("Dashboard Error :", err);
     res.status(500).json({ error: "Failed to fetch dashboard data" });
   }
 };
