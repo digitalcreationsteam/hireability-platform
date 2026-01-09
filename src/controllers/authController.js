@@ -7,17 +7,66 @@ const sendEmail = require("../utils/sendEmail");
 
 
 
+// exports.signup = async (req, res) => {
+//   try {
+//     const { firstname, lastname, email, password, role } = req.body;
+
+//     if (!firstname || !lastname || !email || !password) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     // ✅ ROLE VALIDATION
+//     const allowedRoles = ["student", "recruiter"];
+//     const userRole = allowedRoles.includes(role) ? role : "student";
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(409).json({ message: "Email already registered" });
+//     }
+
+//     const verifyToken = crypto.randomBytes(32).toString("hex");
+
+//     const user = await User.create({
+//       firstname,
+//       lastname,
+//       email,
+//       password,
+//       role: userRole,              // ✅ SAFE ROLE
+//       isVerified: false,
+//       emailVerifyToken: verifyToken,
+//       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
+//     });
+
+//     const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+
+//     await sendEmail({
+//       to: email,
+//       subject: "Verify Your Email",
+//       html: `
+//         <h2>Welcome ${firstname}</h2>
+//         <a href="${verifyUrl}">Verify Email</a>
+//       `,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       is_verified:user.isVerified,
+//       message: "Signup successful. Please verify your email.",
+//     });
+
+//   } catch (err) {
+//     console.error("Signup Error:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 exports.signup = async (req, res) => {
   try {
     const { firstname, lastname, email, password, role } = req.body;
 
     if (!firstname || !lastname || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "All fields required" });
     }
-
-    // ✅ ROLE VALIDATION
-    const allowedRoles = ["student", "recruiter"];
-    const userRole = allowedRoles.includes(role) ? role : "student";
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -31,20 +80,23 @@ exports.signup = async (req, res) => {
       lastname,
       email,
       password,
-      role: userRole,              // ✅ SAFE ROLE
+      role: role || "student",
       isVerified: false,
       emailVerifyToken: verifyToken,
-      emailVerifyExpire: Date.now() + 15 * 60 * 1000,
+      emailVerifyExpire: Date.now() + 15 * 60 * 1000, // 15 minutes
     });
 
-    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+    // 🔥 FRONTEND LINK ONLY
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
 
     await sendEmail({
       to: email,
-      subject: "Verify Your Email",
+      subject: "Verify your email",
       html: `
-        <h2>Welcome ${firstname}</h2>
+        <h2>Hello ${firstname}</h2>
+        <p>Please verify your email</p>
         <a href="${verifyUrl}">Verify Email</a>
+        <p>This link expires in 15 minutes</p>
       `,
     });
 
@@ -52,18 +104,55 @@ exports.signup = async (req, res) => {
       success: true,
       message: "Signup successful. Please verify your email.",
     });
-
   } catch (err) {
-    console.error("Signup Error:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+
+
+// exports.verifyEmail = async (req, res) => {
+//   try {
+//     const { token } = req.params;
+
+//     console.log("🔍 Verification attempt with token:", token);
+
+//     const user = await User.findOne({
+//       emailVerifyToken: token,
+//       emailVerifyExpire: { $gt: Date.now() },
+//     });
+
+//     if (!user) {
+//       console.log("❌ No user found or token expired");
+//       return res.status(400).json({ message: "Invalid or expired token" });
+//     }
+
+//     console.log("✅ User found:", user.email);
+
+//     user.isVerified = true;
+//     user.emailVerifyToken = undefined;
+//     user.emailVerifyExpire = undefined;
+
+//     await user.save();
+
+//     console.log("✅ User verified successfully:", user.email);
+
+//     res.json({
+//       success: true,
+//       email:user.email,
+//       isVerified:user.isVerified,
+//       message: "Email verified successfully",
+//     });
+
+//   } catch (err) {
+//     console.error("❌ Verify email error:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-
-    console.log("🔍 Verification attempt with token:", token);
 
     const user = await User.findOne({
       emailVerifyToken: token,
@@ -71,11 +160,18 @@ exports.verifyEmail = async (req, res) => {
     });
 
     if (!user) {
-      console.log("❌ No user found or token expired");
-      return res.status(400).json({ message: "Invalid or expired token" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token",
+      });
     }
 
-    console.log("✅ User found:", user.email);
+    if (user.isVerified) {
+      return res.json({
+        success: true,
+        message: "Email already verified",
+      });
+    }
 
     user.isVerified = true;
     user.emailVerifyToken = undefined;
@@ -83,93 +179,121 @@ exports.verifyEmail = async (req, res) => {
 
     await user.save();
 
-    console.log("✅ User verified successfully:", user.email);
-
     res.json({
       success: true,
       message: "Email verified successfully",
     });
-
   } catch (err) {
-    console.error("❌ Verify email error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-exports.resendVerificationEmail = async (req, res) => {
-  try {
-    const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
+// exports.resendVerificationEmail = async (req, res) => {
+//   try {
+//     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+//     if (!email) {
+//       return res.status(400).json({ message: "Email is required" });
+//     }
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+//     const user = await User.findOne({ email });
 
-    // 🚫 Already verified
-    if (user.isVerified) {
-      return res.status(400).json({
-        message: "Email already verified"
-      });
-    }
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
 
-    // 🔁 Generate new token
-    const verifyToken = crypto.randomBytes(32).toString("hex");
+//     // 🚫 Already verified
+//     if (user.isVerified) {
+//       return res.status(400).json({
+//         message: "Email already verified"
+//       });
+//     }
 
-    user.emailVerifyToken = verifyToken;
-    user.emailVerifyExpire = Date.now() + 7 * 24 * 60 * 60 * 1000; // ✅ 7 days
-    await user.save();
+//     // 🔁 Generate new token
+//     const verifyToken = crypto.randomBytes(32).toString("hex");
 
-    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+//     user.emailVerifyToken = verifyToken;
+//     user.emailVerifyExpire = Date.now() + 7 * 24 * 60 * 60 * 1000; // ✅ 7 days
+//     await user.save();
 
-    const emailHtml = `
-      <div style="font-family: Arial; padding: 20px;">
-        <h2>Hello ${user.firstname} 👋</h2>
-        <p>Please verify your email to activate your account.</p>
+//     const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+//     // const verifyUrl = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`;
 
-        <a href="${verifyUrl}"
-           style="
-            display:inline-block;
-            padding:12px 20px;
-            background:#4CAF50;
-            color:#fff;
-            text-decoration:none;
-            border-radius:5px;
-            margin-top:10px;
-           ">
-          Verify Email
-        </a>
+//     const emailHtml = `
+//       <div style="font-family: Arial; padding: 20px;">
+//         <h2>Hello ${user.firstname} 👋</h2>
+//         <p>Please verify your email to activate your account.</p>
 
-        <p style="margin-top:20px;">
-          This link will expire in <b>7 days</b>.
-        </p>
-      </div>
-    `;
+//         <a href="${verifyUrl}"
+//            style="
+//             display:inline-block;
+//             padding:12px 20px;
+//             background:#4CAF50;
+//             color:#fff;
+//             text-decoration:none;
+//             border-radius:5px;
+//             margin-top:10px;
+//            ">
+//           Verify Email
+//         </a>
 
-    await sendEmail({
-      to: email,
-      subject: "Resend Email Verification",
-      html: emailHtml,
-    });
+//         <p style="margin-top:20px;">
+//           This link will expire in <b>7 days</b>.
+//         </p>
+//       </div>
+//     `;
 
-    console.log("🔁 Verification email resent to:", email);
+//     await sendEmail({
+//       to: email,
+//       subject: "Resend Email Verification",
+//       html: emailHtml,
+//     });
 
-    res.json({
-      success: true,
-      message: "Verification email resent successfully"
-    });
+//     console.log("🔁 Verification email resent to:", email);
 
-  } catch (err) {
-    console.error("❌ Resend verification error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//     res.json({
+//       success: true,
+//       message: "Verification email resent successfully"
+//     });
+
+//   } catch (err) {
+//     console.error("❌ Resend verification error:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 // ✅ ✅ LOGIN API
+exports.resendVerificationEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) return res.status(400).json({ message: "Email required" });
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  if (user.isVerified) {
+    return res.status(400).json({ message: "Email already verified" });
+  }
+
+  const verifyToken = crypto.randomBytes(32).toString("hex");
+
+  user.emailVerifyToken = verifyToken;
+  user.emailVerifyExpire = Date.now() + 15 * 60 * 1000;
+  await user.save();
+
+  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Verify your email (Resent)",
+    html: `<a href="${verifyUrl}">Verify Email</a>`,
+  });
+
+  res.json({ success: true, message: "Verification email resent" });
+};
+
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
