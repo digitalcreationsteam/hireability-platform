@@ -4,88 +4,115 @@ const McqQuestion = require("../../models/mcqQuestionModel");
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 const { recalculateUserScore } = require("../../services/recalculateUserScore");
 
+const { createAttempt } = require("./attemptEngine");
 
 // START TEST
+// exports.startAssessment = async (req, res) => {
+//   try {
+//      const userId = req.headers["user-id"];
+
+//     // 1. Get user's selected domain & subdomain
+//     const userSkill = await UserDomainSkill.findOne({ userId });
+
+//     if (!userSkill || !userSkill.domainId || !userSkill.subDomainId) {
+//       return res.status(400).json({
+//         message: "Domain and Subdomain not selected",
+//       });
+//     }
+
+//     const { domainId, subDomainId } = userSkill;
+
+//     // 2. Prevent multiple active tests
+//     const existingAttempt = await TestAttempt.findOne({
+//       userId,
+//       domainId,
+//       subDomainId,
+//       status: "in_progress",
+//       expiresAt: { $gt: new Date() },
+//     });
+
+//     if (existingAttempt) {
+//       return res.json({
+//         attemptId: existingAttempt._id,
+//         expiresAt: existingAttempt.expiresAt,
+//       });
+//     }
+
+//     // 3. Fetch 20 random questions
+//     const questions = await McqQuestion.aggregate([
+//       {
+//         $match: {
+//           domainId: new mongoose.Types.ObjectId(domainId),
+//           subDomainId: new mongoose.Types.ObjectId(subDomainId),
+//         },
+//       },
+//       { $sample: { size: 20 } },
+//     ]);
+
+//     if (questions.length < 20) {
+//       return res.status(400).json({
+//         message: "Not enough questions for assessment",
+//       });
+//     }
+
+//     // 4. Create test attempt
+//     const expiresAt = new Date(Date.now() + 25 * 60 * 1000);
+
+//     const attempt = await TestAttempt.create({
+//       userId,
+//       domainId,
+//       subDomainId,
+//       expiresAt,
+//       questions: questions.map((q) => ({
+//         questionId: q._id,
+//         marks:
+//           q.difficulty === "Easy"
+//             ? 10
+//             : q.difficulty === "Medium"
+//             ? 15
+//             : 20,
+//       })),
+//     });
+
+//     // 5. Send questions (hide correct answers)
+//     res.status(201).json({
+//       attemptId: attempt._id,
+//       durationMinutes: 25,
+//       questions: questions.map((q) => ({
+//         _id: q._id,
+//         question: q.question,
+//         options: [q.option1, q.option2, q.option3, q.option4],
+//       })),
+//     });
+//   } catch (error) {
+//     console.error("Start Assessment Error:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// START ASSESSMENT:
 exports.startAssessment = async (req, res) => {
   try {
-     const userId = req.headers["user-id"];
-
-    // 1. Get user's selected domain & subdomain
+    const userId = req.headers["user-id"];
     const userSkill = await UserDomainSkill.findOne({ userId });
 
-    if (!userSkill || !userSkill.domainId || !userSkill.subDomainId) {
-      return res.status(400).json({
-        message: "Domain and Subdomain not selected",
-      });
+    if (!userSkill) {
+      return res.status(400).json({ message: "Domain not selected" });
     }
 
-    const { domainId, subDomainId } = userSkill;
-
-    // 2. Prevent multiple active tests
-    const existingAttempt = await TestAttempt.findOne({
+    const attempt = await createAttempt({
       userId,
-      domainId,
-      subDomainId,
-      status: "in_progress",
-      expiresAt: { $gt: new Date() },
+      domainId: userSkill.domainId,
+      subDomainId: userSkill.subDomainId,
+      type: "default",
     });
 
-    if (existingAttempt) {
-      return res.json({
-        attemptId: existingAttempt._id,
-        expiresAt: existingAttempt.expiresAt,
-      });
-    }
-
-    // 3. Fetch 20 random questions
-    const questions = await McqQuestion.aggregate([
-      {
-        $match: {
-          domainId: new mongoose.Types.ObjectId(domainId),
-          subDomainId: new mongoose.Types.ObjectId(subDomainId),
-        },
-      },
-      { $sample: { size: 20 } },
-    ]);
-
-    if (questions.length < 20) {
-      return res.status(400).json({
-        message: "Not enough questions for assessment",
-      });
-    }
-
-    // 4. Create test attempt
-    const expiresAt = new Date(Date.now() + 25 * 60 * 1000);
-
-    const attempt = await TestAttempt.create({
-      userId,
-      domainId,
-      subDomainId,
-      expiresAt,
-      questions: questions.map((q) => ({
-        questionId: q._id,
-        marks:
-          q.difficulty === "Easy"
-            ? 10
-            : q.difficulty === "Medium"
-            ? 15
-            : 20,
-      })),
-    });
-
-    // 5. Send questions (hide correct answers)
     res.status(201).json({
       attemptId: attempt._id,
-      durationMinutes: 25,
-      questions: questions.map((q) => ({
-        _id: q._id,
-        question: q.question,
-        options: [q.option1, q.option2, q.option3, q.option4],
-      })),
+      expiresAt: attempt.expiresAt,
     });
-  } catch (error) {
-    console.error("Start Assessment Error:", error);
-    res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    res.status(403).json({ message: err.message });
   }
 };
 
@@ -98,7 +125,11 @@ exports.getAttemptQuestions = async (req, res) => {
     }
 
     // 1. Find the attempt
-    const attempt = await TestAttempt.findById(attemptId);
+    const attempt = await TestAttempt.findOne({
+      _id: attemptId,
+      status: "in_progress",
+      expiresAt: { $gt: new Date() },
+    });
 
     if (!attempt) {
       return res.status(404).json({ message: "Test attempt not found" });
@@ -115,13 +146,16 @@ exports.getAttemptQuestions = async (req, res) => {
       _id: q._id,
       question: q.question,
       options: [q.option1, q.option2, q.option3, q.option4],
-      marks: attempt.questions.find((a) => a.questionId.toString() === q._id.toString())
-        ?.marks,
+      marks: attempt.questions.find(
+        (a) => a.questionId.toString() === q._id.toString()
+      )?.marks,
     }));
 
     res.status(200).json({
       attemptId: attempt._id,
-      durationMinutes: Math.ceil((attempt.expiresAt - attempt.createdAt) / (60 * 1000)),
+      durationMinutes: Math.ceil(
+        (attempt.expiresAt - attempt.createdAt) / (60 * 1000)
+      ),
       questions: formattedQuestions,
     });
   } catch (error) {
@@ -137,7 +171,7 @@ exports.saveAnswer = async (req, res) => {
     const attempt = await TestAttempt.findOne({
       _id: attemptId,
       status: "in_progress",
-      expiresAt: { $gt: new Date() }
+      expiresAt: { $gt: new Date() },
     });
 
     if (!attempt) {
@@ -184,8 +218,9 @@ exports.submitAssessment = async (req, res) => {
 
     console.log("✅ attemptId is valid:", attemptId);
 
-    const attempt = await TestAttempt.findById(attemptId)
-      .populate("questions.questionId");
+    const attempt = await TestAttempt.findById(attemptId).populate(
+      "questions.questionId"
+    );
 
     if (!attempt) {
       console.error("❌ No attempt found for ID:", attemptId);
@@ -242,7 +277,7 @@ exports.submitAssessment = async (req, res) => {
 
     attempt.skillIndex = skillIndex;
     attempt.status = "completed";
-    attempt.submittedAt = new Date();
+    // attempt.submittedAt = new Date();
 
     await attempt.save();
     await recalculateUserScore(attempt.userId);
@@ -276,106 +311,169 @@ exports.submitAssessment = async (req, res) => {
   }
 };
 
-
-// RETAKE TEST ========================
+// RETAKE ASSESSMENT:
 exports.retakeAssessment = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
     const { domainId, subDomainId, isPaid } = req.body;
 
+    const type = isPaid ? "paidRetake" : "freeRetake";
+
+    const attempt = await createAttempt({
+      userId,
+      domainId,
+      subDomainId,
+      type,
+    });
+
+    res.status(201).json({
+      attemptId: attempt._id,
+      expiresAt: attempt.expiresAt,
+    });
+  } catch (err) {
+    res.status(403).json({ message: err.message });
+  }
+};
+
+// RETAKE TEST ========================
+// exports.retakeAssessment = async (req, res) => {
+//   try {
+//     const userId = req.headers["user-id"];
+//     const { domainId, subDomainId, isPaid } = req.body;
+
+//     if (!userId) {
+//       return res.status(401).json({ message: "Unauthorized" });
+//     }
+
+//     if (!domainId || !subDomainId) {
+//       return res.status(400).json({
+//         message: "domainId and subDomainId are required",
+//       });
+//     }
+
+//     // 1️⃣ Get or create retake limit
+//     let retakeLimit = await RetakeLimit.findOne({
+//       userId,
+//       domainId,
+//       subDomainId,
+//     });
+
+//     if (!retakeLimit) {
+//       retakeLimit = await RetakeLimit.create({
+//         userId,
+//         domainId,
+//         subDomainId,
+//         freeUsed: 0,
+//         paidUsed: 0,
+//       });
+//     }
+
+//     // 2️⃣ Validate retake rules
+//     if (!isPaid && retakeLimit.freeUsed >= 1) {
+//       return res.status(403).json({
+//         message: "Free retake already used",
+//         requirePayment: true,
+//       });
+//     }
+
+//     if (isPaid && retakeLimit.paidUsed >= 1) {
+//       return res.status(403).json({
+//         message: "No retakes remaining",
+//       });
+//     }
+
+//     // 3️⃣ Expire any running attempt
+//     await TestAttempt.updateMany(
+//       {
+//         userId,
+//         domainId,
+//         subDomainId,
+//         status: "in_progress",
+//       },
+//       { status: "expired" }
+//     );
+
+//     // 4️⃣ Create new attempt
+//     const durationMinutes = 25;
+//     const expiresAt = new Date(
+//       Date.now() + durationMinutes * 60 * 1000
+//     );
+
+//     const newAttempt = await TestAttempt.create({
+//       userId,
+//       domainId,
+//       subDomainId,
+//       testStatus: isPaid ? "paid" : "free",
+//       status: "in_progress",
+//       expiresAt,
+//       totalQuestions: 20,
+//       durationMinutes,
+//       questions: [],
+//       skillIndex: 0,
+//       rawSkillScore: 0,
+//       normalizedSkillScore: 0,
+//     });
+
+//     // 5️⃣ Update counters
+//     if (isPaid) {
+//       retakeLimit.paidUsed += 1;
+//     } else {
+//       retakeLimit.freeUsed += 1;
+//     }
+
+//     await retakeLimit.save();
+
+//     // 6️⃣ Response
+//     return res.status(201).json({
+//       message: "Retake started",
+//       attemptId: newAttempt._id,
+//       expiresAt,
+//       freeRetakesLeft: 1 - retakeLimit.freeUsed,
+//       paidRetakesLeft: 1 - retakeLimit.paidUsed,
+//     });
+
+//   } catch (err) {
+//     console.error("Retake assessment error:", err);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
+
+
+// GET LATEST RESULT 
+exports.getLatestResult = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!domainId || !subDomainId) {
-      return res.status(400).json({
-        message: "domainId and subDomainId are required",
+    const userSkill = await UserDomainSkill.findOne({ userId });
+
+const attempt = await TestAttempt.findOne({
+  userId,
+  domainId: userSkill.domainId,
+  subDomainId: userSkill.subDomainId,
+  status: "completed",
+}).sort({ updatedAt: -1 });
+
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: "No completed assessment found",
       });
     }
 
-    // 1️⃣ Get or create retake limit
-    let retakeLimit = await RetakeLimit.findOne({
-      userId,
-      domainId,
-      subDomainId,
+    res.json({
+      attemptId: attempt._id,
+      skillIndex: attempt.skillIndex,
+      testStatus: attempt.testStatus,
+      completedAt: attempt.updatedAt,
+      maxSkillIndex: 300,
     });
-
-    if (!retakeLimit) {
-      retakeLimit = await RetakeLimit.create({
-        userId,
-        domainId,
-        subDomainId,
-        freeUsed: 0,
-        paidUsed: 0,
-      });
-    }
-
-    // 2️⃣ Validate retake rules
-    if (!isPaid && retakeLimit.freeUsed >= 1) {
-      return res.status(403).json({
-        message: "Free retake already used",
-        requirePayment: true,
-      });
-    }
-
-    if (isPaid && retakeLimit.paidUsed >= 1) {
-      return res.status(403).json({
-        message: "No retakes remaining",
-      });
-    }
-
-    // 3️⃣ Expire any running attempt
-    await TestAttempt.updateMany(
-      {
-        userId,
-        domainId,
-        subDomainId,
-        status: "in_progress",
-      },
-      { status: "expired" }
-    );
-
-    // 4️⃣ Create new attempt
-    const durationMinutes = 25;
-    const expiresAt = new Date(
-      Date.now() + durationMinutes * 60 * 1000
-    );
-
-    const newAttempt = await TestAttempt.create({
-      userId,
-      domainId,
-      subDomainId,
-      testStatus: isPaid ? "paid" : "free",
-      status: "in_progress",
-      expiresAt,
-      totalQuestions: 20,
-      durationMinutes,
-      questions: [],
-      skillIndex: 0,
-      rawSkillScore: 0,
-      normalizedSkillScore: 0,
-    });
-
-    // 5️⃣ Update counters
-    if (isPaid) {
-      retakeLimit.paidUsed += 1;
-    } else {
-      retakeLimit.freeUsed += 1;
-    }
-
-    await retakeLimit.save();
-
-    // 6️⃣ Response
-    return res.status(201).json({
-      message: "Retake started",
-      attemptId: newAttempt._id,
-      expiresAt,
-      freeRetakesLeft: 1 - retakeLimit.freeUsed,
-      paidRetakesLeft: 1 - retakeLimit.paidUsed,
-    });
-
   } catch (err) {
-    console.error("Retake assessment error:", err);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Get Latest Result Error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

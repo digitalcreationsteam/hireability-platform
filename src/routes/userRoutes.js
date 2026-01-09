@@ -367,4 +367,7 @@ router.get("/assessment/getAttemptQuestions/:attemptId", protect, authorizeRoles
 
 router.post("/assessment/retake", protect, authorizeRoles("student"), assessmentController.retakeAssessment);
 
+router.get("/assessment/result/latest", protect, authorizeRoles("student"), assessmentController.getLatestResult );
+
+
 module.exports = router;
