@@ -7,6 +7,7 @@ const Certification = require("../models/certificationModel");
 const Award = require("../models/awardModel");
 const Project = require("../models/projectModel");
 const UserScore = require("../models/userScoreModel");
+const UserDomainSkill = require("../models/userDomainSkillModel");
 // const documents = require("../models/userDocumentModel");
 
 exports.getDashboardByUserId = async (req, res) => {
@@ -27,7 +28,8 @@ exports.getDashboardByUserId = async (req, res) => {
       awards,
       projects,
       userScore,
-      topUser
+      topUser,
+      skillsDoc
     ] = await Promise.all([
       Demographics.find({ userId }).lean(),
       Education.find({ userId }).lean(),
@@ -36,6 +38,8 @@ exports.getDashboardByUserId = async (req, res) => {
       Award.find({ userId }).lean(),
       Project.find({ userId }).lean(),
       UserScore.findOne({ userId }).lean(),
+      UserDomainSkill.findOne({ userId }).lean(),
+
       UserScore.findOne({})
         .sort({ experienceIndexScore: -1 })
         .select("experienceIndexScore")
@@ -51,6 +55,15 @@ exports.getDashboardByUserId = async (req, res) => {
 
     const experienceIndexTotal =
       topUser?.experienceIndexScore || experienceIndexScore || 0;
+
+
+      const globalrank = userScore?.globalrank?? 0;
+    const countryrank = userScore?.countryrank || 0;
+    const cityrank= userScore?.cityrank || 0;
+        const universityrank= userScore?.universityrank || 0;
+
+const skill = UserDomainSkill?.Skills || 0;
+
 
     /* --------------------------------
        RESPONSE (SAME STRUCTURE YOU WANT)
@@ -83,6 +96,20 @@ exports.getDashboardByUserId = async (req, res) => {
         skillIndexScore,
         skillIndexTotal: 300,
         hireabilityIndex
+      },
+
+      rank: {
+         globalrank: userScore?.globalRank || 0,
+         countryRank: userScore?.countryRank || 0, 
+         stateRank: userScore?.stateRank || 0, 
+         cityRank: userScore?.cityRank || 0, 
+
+         universityrank: userScore?.universityrank || 0,
+        
+      },
+
+       skill: {
+        skills: skillsDoc?.skills || []
       }
     });
 
