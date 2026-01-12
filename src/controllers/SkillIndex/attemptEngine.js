@@ -1,6 +1,7 @@
 const TestAttempt = require("../../models/testAttemptModel");
 const AttemptLimit = require("../../models/attemptLimitModel");
 const McqQuestion = require("../../models/mcqQuestionModel");
+const mongoose = require("mongoose");
 
 
 /**
@@ -38,8 +39,8 @@ async function createAttempt({ userId, domainId, subDomainId, type }) {
   const questions = await McqQuestion.aggregate([
     {
       $match: {
-        domainId,
-        subDomainId,
+        domainId: new mongoose.Types.ObjectId(domainId),
+        subDomainId: new mongoose.Types.ObjectId(subDomainId),
       },
     },
     { $sample: { size: 20 } },
@@ -61,12 +62,7 @@ async function createAttempt({ userId, domainId, subDomainId, type }) {
     expiresAt,
     questions: questions.map((q) => ({
       questionId: q._id,
-      marks:
-        q.difficulty === "Easy"
-          ? 10
-          : q.difficulty === "Medium"
-          ? 15
-          : 20,
+      marks: q.difficulty === "Easy" ? 10 : q.difficulty === "Medium" ? 15 : 20,
     })),
   });
 
