@@ -5,6 +5,7 @@ const UserDomainSkill = require("../../models/userDomainSkillModel");
 const { recalculateUserScore } = require("../../services/recalculateUserScore");
 
 const { createAttempt } = require("./attemptEngine");
+const AttemptLimit = require("../../models/attemptLimitModel");
 
 // START TEST
 // exports.startAssessment = async (req, res) => {
@@ -290,7 +291,7 @@ exports.submitAssessment = async (req, res) => {
         subDomainId: attempt.subDomainId,
       },
       {
-        $set: { skillIndex },
+        $max: { skillIndex },
         $inc: { totalAttempts: 1 },
       },
       { upsert: true }
@@ -438,9 +439,7 @@ exports.retakeAssessment = async (req, res) => {
 //   }
 // };
 
-
-
-// GET LATEST RESULT 
+// GET LATEST RESULT
 exports.getLatestResult = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -450,14 +449,16 @@ exports.getLatestResult = async (req, res) => {
     }
 
     const userSkill = await UserDomainSkill.findOne({ userId });
+    if (!userSkill) {
+      return res.status(404).json({ message: "No domain selected" });
+    }
 
-const attempt = await TestAttempt.findOne({
-  userId,
-  domainId: userSkill.domainId,
-  subDomainId: userSkill.subDomainId,
-  status: "completed",
-}).sort({ updatedAt: -1 });
-
+    const attempt = await TestAttempt.findOne({
+      userId,
+      domainId: userSkill.domainId,
+      subDomainId: userSkill.subDomainId,
+      status: "completed",
+    }).sort({ updatedAt: -1 });
 
     if (!attempt) {
       return res.status(404).json({
@@ -474,6 +475,44 @@ const attempt = await TestAttempt.findOne({
     });
   } catch (err) {
     console.error("Get Latest Result Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+///////////////////////////////////////////////////////////////
+
+exports.getAssessmentAvailability = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userSkill = await UserDomainSkill.findOne({ userId });
+    if (!userSkill) {
+      return res.status(404).json({ message: "Domain not selected" });
+    }
+
+    const limit = await AttemptLimit.findOne({
+      userId,
+      domainId: userSkill.domainId,
+      subDomainId: userSkill.subDomainId,
+    });
+
+    const defaultUsed = limit?.defaultUsed ?? false;
+    const freeRetakeUsed = limit?.freeRetakeUsed ?? false;
+    const paidRetakeUsed = limit?.paidRetakeUsed ?? false;
+
+    res.json({
+      defaultUsed,
+      freeRetakeUsed,
+      paidRetakeUsed,
+      canStart: !defaultUsed,
+      canFreeRetake: defaultUsed && !freeRetakeUsed,
+      canPaidRetake: defaultUsed && freeRetakeUsed && !paidRetakeUsed,
+    });
+  } catch (err) {
+    console.error("Availability Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

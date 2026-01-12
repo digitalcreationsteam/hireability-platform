@@ -22,8 +22,13 @@ const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
 const userDocumentController = require("../controllers/userDocumentController");
 
-const router = express.Router();
+console.log(
+  "Assessment Controller Keys:",
+  Object.keys(assessmentController)
+);
 
+
+const router = express.Router();
 
 // =================================================
 // USER PROFILE (STUDENT)
@@ -67,8 +72,6 @@ router.post(
 // =================================================
 // MCQ IMPORT (RECRUITER + ADMIN)
 // =================================================
-
-
 
 // =================================================
 // SKILL INDEX - DOMAIN (ADMIN ONLY)
@@ -144,7 +147,7 @@ router.get(
 router.get(
   "/userDomainSkill/domain/:domainId",
   protect,
-  authorizeRoles("recruiter", "admin" ,"student"),
+  authorizeRoles("recruiter", "admin", "student"),
   userDomainSkillController.getUsersByDomain
 );
 
@@ -308,7 +311,6 @@ router.post(
   userDocumentController.uploadOrUpdateProfile
 );
 
-
 // =================================================
 // AWARDS (STUDENT)
 // =================================================
@@ -347,11 +349,6 @@ router.get(
 // RANKING (STUDENT)
 // =================================================
 
-
-
-
-
-
 // =================================================
 // Assessment (STUDENT)
 // =================================================
@@ -360,14 +357,49 @@ router.get(
 // router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 // Submit test
-router.post("/assessment/submit", protect, authorizeRoles("student"), assessmentController.submitAssessment);
-router.post("/assessment/saveAnswer", protect, authorizeRoles("student"), assessmentController.saveAnswer);
-router.post("/assessment/start", protect, authorizeRoles("student"), assessmentController.startAssessment);
-router.get("/assessment/getAttemptQuestions/:attemptId", protect, authorizeRoles("student"), assessmentController.getAttemptQuestions);
+router.post(
+  "/assessment/submit",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.submitAssessment
+);
+router.post(
+  "/assessment/saveAnswer",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.saveAnswer
+);
+router.post(
+  "/assessment/start",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.startAssessment
+);
+router.get(
+  "/assessment/getAttemptQuestions/:attemptId",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.getAttemptQuestions
+);
 
-router.post("/assessment/retake", protect, authorizeRoles("student"), assessmentController.retakeAssessment);
+router.post(
+  "/assessment/retake",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.retakeAssessment
+);
 
-router.get("/assessment/result/latest", protect, authorizeRoles("student"), assessmentController.getLatestResult );
-
+router.get(
+  "/assessment/result/latest",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.getLatestResult
+);
+router.get(
+  "/assessment/availability",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.getAssessmentAvailability
+);
 
 module.exports = router;
