@@ -41,3 +41,4 @@ exports.initSocket = (server) => {
     });
   });
 };
+console.log("User connected:", socket.user.id);
