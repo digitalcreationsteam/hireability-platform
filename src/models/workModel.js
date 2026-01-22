@@ -39,7 +39,7 @@ const WorkSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
-    typeofRole: {
+    typeOfRole: {
           type: String,
           required: false,
           trim: true,
