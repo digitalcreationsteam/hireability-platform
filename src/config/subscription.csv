@@ -1,0 +1,5 @@
+name,description,price,currency,billingPeriod,isActive,maxAssessments,maxCandidates,skillIndexAccess,advancedAnalytics,prioritySupport,customBranding,apiAccess,trialPeriod,order
+Free,"Free plan with basic features",0,USD,monthly,true,10,50,false,false,false,false,false,0,1
+Basic,"Basic plan for individuals",9.99,USD,monthly,true,100,200,true,false,false,false,false,7,2
+Premium,"Premium plan for professionals",29.99,USD,monthly,true,500,1000,true,true,true,false,false,14,3
+Enterprise,"Enterprise plan for organizations",99.99,USD,monthly,true,999999,999999,true,true,true,true,true,30,4

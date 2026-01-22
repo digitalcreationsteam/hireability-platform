@@ -32,3 +32,4 @@ const userDomainSkillSchema = new mongoose.Schema(
 userDomainSkillSchema.index({ userId: 1, domainId: 1 }, { unique: true });
 
 module.exports = mongoose.model("UserDomainSkill", userDomainSkillSchema);
+
