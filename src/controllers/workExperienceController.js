@@ -154,7 +154,7 @@ exports.getWorkExperienceById = async (req, res) => {
 
     return res.status(200).json({
       message: "Work experience fetched successfully",
-      data: workExperience,
+      data: workExperience
     });
 
   } catch (error) {
