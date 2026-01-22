@@ -378,12 +378,12 @@ router.get(
   assessmentController.getAttemptQuestions
 );
 
-router.post(
-  "/assessment/retake",
-  protect,
-  authorizeRoles("student"),
-  assessmentController.retakeAssessment
-);
+// router.post(
+//   "/assessment/retake",
+//   protect,
+//   authorizeRoles("student"),
+//   assessmentController.retakeAssessment
+// );
 
 router.get(
   "/assessment/result/latest",
@@ -391,11 +391,11 @@ router.get(
   authorizeRoles("student"),
   assessmentController.getLatestResult
 );
-router.get(
-  "/assessment/availability",
-  protect,
-  authorizeRoles("student"),
-  assessmentController.getAssessmentAvailability
-);
+// router.get(
+//   "/assessment/availability",
+//   protect,
+//   authorizeRoles("student"),
+//   assessmentController.getAssessmentAvailability
+// );
 
 module.exports = router;
