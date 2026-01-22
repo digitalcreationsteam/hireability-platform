@@ -4,7 +4,7 @@ const McqQuestion = require("../../models/mcqQuestionModel");
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 const { recalculateUserScore } = require("../../services/recalculateUserScore");
 
-const { createAttempt } = require("./attemptEngine");
+const { createAttempt } = require("./attemptEngine");   
 const AttemptLimit = require("../../models/attemptLimitModel");
 
 // START TEST
@@ -105,7 +105,7 @@ exports.startAssessment = async (req, res) => {
       userId,
       domainId: userSkill.domainId,
       subDomainId: userSkill.subDomainId,
-      type: "default",
+      // type: "default",
     });
 
     res.status(201).json({
@@ -312,29 +312,29 @@ exports.submitAssessment = async (req, res) => {
   }
 };
 
-// RETAKE ASSESSMENT:
-exports.retakeAssessment = async (req, res) => {
-  try {
-    const userId = req.headers["user-id"];
-    const { domainId, subDomainId, isPaid } = req.body;
+// // RETAKE ASSESSMENT:
+// exports.retakeAssessment = async (req, res) => {
+//   try {
+//     const userId = req.headers["user-id"];
+//     const { domainId, subDomainId, isPaid } = req.body;
 
-    const type = isPaid ? "paidRetake" : "freeRetake";
+//     const type = isPaid ? "paidRetake" : "freeRetake";
 
-    const attempt = await createAttempt({
-      userId,
-      domainId,
-      subDomainId,
-      type,
-    });
+//     const attempt = await createAttempt({
+//       userId,
+//       domainId,
+//       subDomainId,
+//       type,
+//     });
 
-    res.status(201).json({
-      attemptId: attempt._id,
-      expiresAt: attempt.expiresAt,
-    });
-  } catch (err) {
-    res.status(403).json({ message: err.message });
-  }
-};
+//     res.status(201).json({
+//       attemptId: attempt._id,
+//       expiresAt: attempt.expiresAt,
+//     });
+//   } catch (err) {
+//     res.status(403).json({ message: err.message });
+//   }
+// };
 
 // RETAKE TEST ========================
 // exports.retakeAssessment = async (req, res) => {
