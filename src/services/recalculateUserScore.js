@@ -34,10 +34,21 @@ exports.recalculateUserScore = async (userId) => {
   const projectScore = projects.reduce((t, p) => t + (p.projectScore || 0), 0);
 
   // ✅ CORRECT SKILL INDEX
-  const skillIndexScore = completedTests.reduce(
-    (t, s) => t + (s.skillIndex || 0),
-    0
-  );
+  // const skillIndexScore = completedTests.reduce(
+  //   (t, s) => t + (s.skillIndex || 0),
+  //   0
+  // );
+
+  // ✅ CORRECT SKILL INDEX (LATEST ATTEMPT ONLY)
+let skillIndexScore = 0;
+
+if (completedTests.length > 0) {
+  const latestTest = completedTests.sort(
+    (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+  )[0];
+
+  skillIndexScore = latestTest.skillIndex || 0;
+}
 
   const experienceIndexScore =
     educationScore +

@@ -1,97 +1,75 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const subscriptionPlanSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    enum: ['Basic', 'Premium'], // Add more as needed
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  currency: {
-    type: String,
-    default: 'USD',
-    enum: ['USD', 'EUR', 'GBP', 'INR'],
-  },
-  billingPeriod: {
-    type: String,
-    required: true,
-    enum: ['monthly', 'quarterly', 'yearly', 'lifetime'],
-    default: 'monthly',
-  },
-  features: [
-    {
-      name: String,
-      included: Boolean,
-      description: String,
-      limits: {
-        type: String, // e.g., "100 assessments/month", "Unlimited"
-        default: 'Unlimited',
-      },
+const subscriptionPlanSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      enum: ["Free", "Basic", "Premium", "Enterprise"],
+      unique: true,
     },
-  ],
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  maxAssessments: {
-    type: Number,
-    default: 0, // 0 means unlimited
-  },
-  maxCandidates: {
-    type: Number,
-    default: 0,
-  },
-  skillIndexAccess: {
-    type: Boolean,
-    default: false,
-  },
-  advancedAnalytics: {
-    type: Boolean,
-    default: false,
-  },
-  prioritySupport: {
-    type: Boolean,
-    default: false,
-  },
-  customBranding: {
-    type: Boolean,
-    default: false,
-  },
-  apiAccess: {
-    type: Boolean,
-    default: false,
-  },
-  trialPeriod: {
-    type: Number, // days
-    default: 0,
-  },
-  order: {
-    type: Number,
-    default: 0, // For sorting plans
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
 
-// Update the updatedAt timestamp on save
-subscriptionPlanSchema.pre('save', function (next) {
-  this.updatedAt = Date.now();
-  next();
-});
+    description: {
+      type: String,
+      required: true,
+    },
 
-const SubscriptionPlan = mongoose.model('SubscriptionPlan', subscriptionPlanSchema);
-module.exports = SubscriptionPlan;
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    currency: {
+      type: String,
+      enum: ["USD", "EUR", "GBP", "INR"],
+      default: "USD",
+    },
+
+    billingPeriod: {
+      type: String,
+      enum: ["monthly", "yearly", "lifetime"],
+      default: "monthly",
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    maxAssessments: {
+      type: Number,
+      default: 0, // 999999 = unlimited
+    },
+
+    maxCandidates: {
+      type: Number,
+      default: 0,
+    },
+
+    skillIndexAccess: Boolean,
+    advancedAnalytics: Boolean,
+    prioritySupport: Boolean,
+    customBranding: Boolean,
+    apiAccess: Boolean,
+
+    trialPeriod: {
+      type: Number,
+      default: 0,
+    },
+
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+  },
+  { timestamps: true },
+);
+
+subscriptionPlanSchema.index({ isActive: 1, order: 1 });
+
+// module.exports = mongoose.model("SubscriptionPlan", subscriptionPlanSchema);
+
+module.exports = mongoose.model("SubscriptionPlan", subscriptionPlanSchema, "subscriptionPlan",);
