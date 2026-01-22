@@ -25,8 +25,19 @@ const WorkSchema = new mongoose.Schema(
       required: true,
     },
 
+    startMonth: {
+      type: Number,
+      required: true,
+    },
+
     endYear: {
       type: Number,
+      required: true,
+    },
+
+    endMonth: {
+      type: Number,
+      required: true,
     },
 
     currentlyWorking: {
@@ -34,23 +45,23 @@ const WorkSchema = new mongoose.Schema(
       default: false,
     },
 
-      description: {
+    description: {
       type: String,
       required: false,
       trim: true,
     },
-    typeofRole: {
-          type: String,
-          required: false,
-          trim: true,
-        },
+    typeOfRole: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     workScore: {
       type: Number,
       default: 0,
     },
     // Duration auto-calculated if needed
     duration: {
-      type: Number, // in years
+      type: Number, // in months
       required: true,
     },
   },
