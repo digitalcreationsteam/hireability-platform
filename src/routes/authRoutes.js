@@ -1,49 +1,62 @@
+// routes/authRoutes.js - FIXED VERSION
 const express = require("express");
+const router = express.Router(); // Make sure this is Express Router
+
+// Import all your dependencies
 const passport = require("passport");
 const axios = require("axios");
 const crypto = require("crypto");
 
-// const {
-//   signup,
-//   login,
-//   verifyEmail,
-//   resendVerificationEmail,
-// } = require("../controllers/authController");
+// Import controller functions ONE BY ONE to avoid any import issues
+const signup = require("../controllers/authController").signup;
+const login = require("../controllers/authController").login;
+const verifyEmail = require("../controllers/authController").verifyEmail;
+const resendVerificationEmail = require("../controllers/authController").resendVerificationEmail;
+const logout = require("../controllers/authController").logout;
+const getUserStatus = require("../controllers/authController").getUserStatus;
+const verifyRouteEndpoint = require("../controllers/authController").verifyRouteEndpoint;
 
+// Import forgot password functions if they exist
+let forgotPasswordNew, verifyResetCode, resetPasswordNew;
+try {
+  const authController = require("../controllers/authController");
+  forgotPasswordNew = authController.forgotPasswordNew;
+  verifyResetCode = authController.verifyResetCode;
+  resetPasswordNew = authController.resetPasswordNew;
+} catch (error) {
+  console.log("Forgot password functions not found, continuing without them");
+}
 
-const {
-  signup,
-  login,
-  verifyEmail,
-  resendVerificationEmail,
-  forgotPasswordNew,
-  verifyResetCode,
-  resetPasswordNew,
-  logout,
-} = require("../controllers/authController");
-
+// Import auth middleware
+const auth = require("../middlewares/auth");
 
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
 
-const router = express.Router();
-
 /* =================================================
-   AUTH (EMAIL / PASSWORD)
+   ✅ EMAIL / PASSWORD AUTH
 ================================================= */
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/logout", logout);
+
+/* ✅ EMAIL VERIFICATION */
 router.get("/verify/:token", verifyEmail);
 router.post("/resend-verification", resendVerificationEmail);
 
+/* ✅ NAVIGATION STATUS (Protected routes) */
+router.get("/user-status", auth, getUserStatus);
+router.post("/verify-route", auth, verifyRouteEndpoint);
 
-/* ---------- FORGOT PASSWORD (OTP) ---------- */
-router.post("/forgot-password", forgotPasswordNew);
-router.post("/verify-reset-otp", verifyResetCode);
-router.post("/reset-password", resetPasswordNew);
+/* ✅ FORGOT PASSWORD (only if functions exist) */
+if (forgotPasswordNew) {
+  router.post("/forgot-password", forgotPasswordNew);
+  router.post("/verify-reset-otp", verifyResetCode);
+  router.post("/reset-password", resetPasswordNew);
+}
 
 /* =================================================
-   GOOGLE OAUTH (PASSPORT – WORKING)
+   🔐 GOOGLE OAUTH
 ================================================= */
 router.get(
   "/google",
@@ -63,10 +76,10 @@ router.get(
 );
 
 /* =================================================
-   LINKEDIN OAUTH (OPENID – PRODUCTION READY)
+   🔗 LINKEDIN OAUTH
 ================================================= */
 
-/* 🔹 Step 1: Redirect to LinkedIn */
+/* Step 1: Redirect to LinkedIn */
 router.get("/linkedin", (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
 
@@ -83,7 +96,7 @@ router.get("/linkedin", (req, res) => {
   );
 });
 
-/* 🔹 Step 2: LinkedIn Callback */
+/* Step 2: LinkedIn Callback */
 router.get("/linkedin/callback", async (req, res) => {
   try {
     const { code } = req.query;
@@ -91,7 +104,7 @@ router.get("/linkedin/callback", async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/login`);
     }
 
-    /* 1️⃣ Exchange code → access token */
+    /* Exchange code → access token */
     const tokenRes = await axios.post(
       "https://www.linkedin.com/oauth/v2/accessToken",
       new URLSearchParams({
@@ -106,7 +119,7 @@ router.get("/linkedin/callback", async (req, res) => {
 
     const accessToken = tokenRes.data.access_token;
 
-    /* 2️⃣ Fetch OpenID profile */
+    /* Fetch OpenID profile */
     const profileRes = await axios.get(
       "https://api.linkedin.com/v2/userinfo",
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -114,24 +127,21 @@ router.get("/linkedin/callback", async (req, res) => {
 
     const { given_name, family_name, sub } = profileRes.data;
 
-    /* 3️⃣ Try fetching email (may fail – expected) */
+    /* Try fetching email */
     let email = null;
     try {
       const emailRes = await axios.get(
         "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      email =
-        emailRes.data.elements?.[0]?.["handle~"]?.emailAddress || null;
+      email = emailRes.data.elements?.[0]?.["handle~"]?.emailAddress || null;
     } catch {
       console.log("⚠️ LinkedIn email not available");
     }
 
-    console.log("👉 LinkedIn CALLBACK HIT");
-    console.log("👉 LinkedIn SUB:", sub);
-    console.log("👉 LinkedIn EMAIL:", email);
+    console.log("👉 LinkedIn Profile - Sub:", sub, "Email:", email);
 
-    /* 4️⃣ Find or create LinkedIn user */
+    /* Find or create user */
     let user = await User.findOne({ linkedinId: sub });
 
     if (!user) {
@@ -148,33 +158,31 @@ router.get("/linkedin/callback", async (req, res) => {
         isVerified: !!email,
       });
 
-      console.log("✅ LinkedIn user CREATED:", user._id);
+      console.log("✅ LinkedIn user created:", user._id);
     } else {
-      console.log("ℹ️ LinkedIn user FOUND:", user._id);
+      console.log("ℹ️ LinkedIn user found:", user._id);
     }
 
-    /* 5️⃣ No email → fallback page */
+    /* No email → ask user to complete profile */
     if (!email) {
       return res.redirect(
         `${process.env.FRONTEND_URL}/complete-profile?userId=${user._id}`
       );
     }
 
-    /* 6️⃣ Email exists → login */
+    /* Email exists → login */
     user.isVerified = true;
     await user.save();
 
-    const token = generateToken(user);
+    const token = generateToken(user._id);
     res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
   } catch (error) {
-    console.error("❌ LinkedIn OAuth Error:", error);
+    console.error("❌ LinkedIn OAuth error:", error);
     res.redirect(`${process.env.FRONTEND_URL}/login`);
   }
 });
 
-/* =================================================
-   LINKEDIN COMPLETE PROFILE (AUTO MERGE FIX)
-================================================= */
+/* Step 3: Complete LinkedIn Profile */
 router.post("/linkedin/complete", async (req, res) => {
   try {
     const { userId, email, firstName, lastName } = req.body;
@@ -182,7 +190,7 @@ router.post("/linkedin/complete", async (req, res) => {
     if (!userId || !email) {
       return res.status(400).json({
         success: false,
-        message: "User ID and email are required",
+        message: "User ID and email required",
       });
     }
 
@@ -196,7 +204,7 @@ router.post("/linkedin/complete", async (req, res) => {
 
     const existingUser = await User.findOne({ email });
 
-    /* 🔥 CASE 1: Email already exists → MERGE & LOGIN */
+    /* Case 1: Email exists → merge */
     if (existingUser && existingUser._id.toString() !== userId) {
       existingUser.linkedinId = tempUser.linkedinId;
       existingUser.socialLogin = "linkedin";
@@ -205,7 +213,7 @@ router.post("/linkedin/complete", async (req, res) => {
       await existingUser.save();
       await User.findByIdAndDelete(userId);
 
-      const token = generateToken(existingUser);
+      const token = generateToken(existingUser._id);
 
       return res.json({
         success: true,
@@ -215,7 +223,7 @@ router.post("/linkedin/complete", async (req, res) => {
       });
     }
 
-    /* 🔹 CASE 2: Email not used → UPDATE TEMP USER */
+    /* Case 2: Email not used → update user */
     tempUser.email = email;
     tempUser.firstname = firstName || tempUser.firstname;
     tempUser.lastname = lastName || tempUser.lastname;
@@ -223,7 +231,7 @@ router.post("/linkedin/complete", async (req, res) => {
 
     await tempUser.save();
 
-    const token = generateToken(tempUser);
+    const token = generateToken(tempUser._id);
 
     res.json({
       success: true,

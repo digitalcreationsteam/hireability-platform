@@ -22,10 +22,6 @@ const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
 const userDocumentController = require("../controllers/userDocumentController");
 
-console.log(
-  "Assessment Controller Keys:",
-  Object.keys(assessmentController)
-);
 
 
 const router = express.Router();
