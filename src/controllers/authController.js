@@ -1,65 +1,327 @@
+// controllers/authController.js - FIXED VERSION
+
 const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const Demographics = require("../models/demographicsModel");
+const Education = require("../models/educationModel");
+const Experience = require("../models/workModel");
+const Certification = require("../models/certificationModel");
+const Award = require("../models/awardModel");
+const Project = require("../models/projectModel");
+const Domain = require("../models/domainModel");
+const UserDomainSkill = require("../models/userDomainSkillModel");
+const SkillAssessment = require("../models/SkillAssessmentModel");
+const Subscription = require("../models/subscriptionModel");
+const verifyEmailTemplate = require("../utils/verifyEmail");
+// ============================================
+// STEP SEQUENCE - ONLY REAL DATA STEPS
+// ============================================
+// REMOVED: skill-index-intro, assessment-intro (frontend-only)
+// These are auto-skipped, not tracked in database
+const STEP_SEQUENCE = [
+  "demographics",
+  "education",
+  "experience",
+  "certifications",
+  "awards",
+  "projects",
+  "paywall",
+  "job-domain",
+  "skills",
+  "assessment",
+  "assessment-results",
+];
 
+// ============================================
+// FRONTEND-ONLY STEPS (auto-skipped)
+// ============================================
+const FRONTEND_ONLY_STEPS = ["skill-index-intro", "assessment-intro"];
 
+// ============================================
+// HELPER: Get completion status from database
+// ============================================
+const getCompletionStatus = async (userId) => {
+  try {
+    const [
+      demographics,
+      education,
+      experience,
+      certifications,
+      awards,
+      projects,
+      subscription,
+      userDomainSkill,
+      assessment,
+    ] = await Promise.all([
+      Demographics.findOne({ userId }).lean(),
+      Education.findOne({ userId }).lean(),
+      Experience.findOne({ userId }).lean(),
+      Certification.findOne({ userId }).lean(),
+      Award.findOne({ userId }).lean(),
+      Project.findOne({ userId }).lean(),
+      Subscription.findOne({ user: userId, status: "active" }).lean(),
+      UserDomainSkill.findOne({ userId }).lean(), // ✅ Check UserDomainSkill
+      SkillAssessment.findOne({ userId }).lean(),
+    ]);
 
-// exports.signup = async (req, res) => {
-//   try {
-//     const { firstname, lastname, email, password, role } = req.body;
+    console.log("📊 Completion Status Debug:", {
+      demographics: !!demographics?._id,
+      education: !!education?._id,
+      experience: !!experience?._id,
+      certifications: !!certifications?._id,
+      awards: !!awards?._id,
+      projects: !!projects?._id,
+      paywall: !!subscription?._id,
+      "job-domain": !!userDomainSkill?._id && !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+      skills: (userDomainSkill?.skills?.length || 0) > 0,
+      assessment: !!assessment?.startedAt && !assessment?.completedAt,
+      "assessment-results": !!assessment?.completedAt,
+    });
 
-//     if (!firstname || !lastname || !email || !password) {
-//       return res.status(400).json({ message: "All fields are required" });
-//     }
+    return {
+      demographics: !!demographics?._id,
+      education: !!education?._id,
+      experience: !!experience?._id,
+      certifications: !!certifications?._id,
+      awards: !!awards?._id,
+      projects: !!projects?._id,
+      paywall: !!subscription?._id, // ✅ Mark paywall complete if subscription exists
+      "job-domain": !!userDomainSkill?._id && !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId, // ✅ Check UserDomainSkill
+      skills: (userDomainSkill?.skills?.length || 0) > 0, // ✅ Check skills array in UserDomainSkill
+      assessment: !!assessment?.startedAt && !assessment?.completedAt,
+      "assessment-results": !!assessment?.completedAt,
+    };
+  } catch (error) {
+    console.error("❌ Error getting completion status:", error);
+    return {};
+  }
+};
 
-//     // ✅ ROLE VALIDATION
-//     const allowedRoles = ["student", "recruiter"];
-//     const userRole = allowedRoles.includes(role) ? role : "student";
+// ============================================
+// HELPER: Calculate navigation from status
+// ============================================
+const calculateNavigation = (completionStatus) => {
+  // Find first incomplete step (only from STEP_SEQUENCE)
+  const currentStep =
+    STEP_SEQUENCE.find((step) => !completionStatus[step]) ||
+    "assessment-results";
 
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(409).json({ message: "Email already registered" });
-//     }
+  // Get all completed steps
+  const completedSteps = STEP_SEQUENCE.filter(
+    (step) => completionStatus[step]
+  );
 
-//     const verifyToken = crypto.randomBytes(32).toString("hex");
+  // Map steps to routes
+  const stepToRoute = {
+    demographics: "/demographics",
+    education: "/education",
+    experience: "/experience",
+    certifications: "/certifications",
+    awards: "/awards",
+    projects: "/projects",
+    paywall: "/paywall",
+    "job-domain": "/job-domain",
+    skills: "/skills",
+    assessment: "/assessment",
+    "assessment-results": "/assessment-results",
+  };
 
-//     const user = await User.create({
-//       firstname,
-//       lastname,
-//       email,
-//       password,
-//       role: userRole,              // ✅ SAFE ROLE
-//       isVerified: false,
-//       emailVerifyToken: verifyToken,
-//       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
-//     });
+  // ✅ Handle frontend-only steps
+  let nextRoute = stepToRoute[currentStep];
 
-//     const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+  // If next step is paywall and it's completed, skip to job-domain
+  if (currentStep === "paywall" && completionStatus.paywall) {
+    nextRoute = "/job-domain";
+  }
 
-//     await sendEmail({
-//       to: email,
-//       subject: "Verify Your Email",
-//       html: `
-//         <h2>Welcome ${firstname}</h2>
-//         <a href="${verifyUrl}">Verify Email</a>
-//       `,
-//     });
+  // If next step is job-domain and it's completed, skip to skills
+  if (currentStep === "job-domain" && completionStatus["job-domain"]) {
+    nextRoute = "/skills";
+  }
 
-//     res.status(201).json({
-//       success: true,
-//       is_verified:user.isVerified,
-//       message: "Signup successful. Please verify your email.",
-//     });
+  // If next step is skills and it's completed, skip to assessment
+  if (currentStep === "skills" && completionStatus.skills) {
+    nextRoute = "/assessment";
+  }
 
-//   } catch (err) {
-//     console.error("Signup Error:", err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+  return {
+    nextRoute: nextRoute || "/demographics",
+    currentStep,
+    completedSteps,
+    isOnboardingComplete:
+      currentStep === "assessment-results" &&
+      completionStatus["assessment-results"],
+    hasPayment: completionStatus.paywall || false,
+  };
+};
 
+// ============================================
+// LOGIN - Returns navigation info
+// ============================================
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password required",
+      });
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your email before login",
+      });
+    }
+
+    const isPasswordValid = await user.matchPassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    // Get completion status
+    const completionStatus = await getCompletionStatus(user._id);
+
+    // Calculate navigation
+    const navigation = calculateNavigation(completionStatus);
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+      },
+      navigation: {
+        nextRoute: navigation.nextRoute,
+        currentStep: navigation.currentStep,
+        completedSteps: navigation.completedSteps,
+        isOnboardingComplete: navigation.isOnboardingComplete,
+        hasPayment: navigation.hasPayment,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Login failed",
+    });
+  }
+};
+
+// ============================================
+// GET USER STATUS - Called after saving steps
+// ============================================
+exports.getUserStatus = async (req, res) => {
+  try {
+    // Get userId from auth middleware
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - User not found",
+      });
+    }
+
+    console.log("🔍 getUserStatus called for userId:", userId);
+
+    // Get completion status
+    const completionStatus = await getCompletionStatus(userId);
+    console.log("📊 Completion status:", completionStatus);
+
+    // Calculate navigation
+    const navigation = calculateNavigation(completionStatus);
+    console.log("🧭 Navigation:", navigation);
+
+    res.status(200).json({
+      success: true,
+      navigation: {
+        nextRoute: navigation.nextRoute,
+        currentStep: navigation.currentStep,
+        completedSteps: navigation.completedSteps,
+        isOnboardingComplete: navigation.isOnboardingComplete,
+        hasPayment: navigation.hasPayment,
+      },
+    });
+  } catch (error) {
+    console.error("❌ getUserStatus error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user status",
+    });
+  }
+};
+
+// ============================================
+// VERIFY ROUTE - Optional security check
+// ============================================
+exports.verifyRouteEndpoint = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const requestedRoute = req.body.route;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!requestedRoute) {
+      return res.status(400).json({
+        success: false,
+        message: "Route parameter required",
+      });
+    }
+
+    const completionStatus = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(completionStatus);
+
+    const isAllowed = navigation.nextRoute === requestedRoute;
+
+    res.status(200).json({
+      success: true,
+      allowed: isAllowed,
+      nextRoute: navigation.nextRoute,
+      currentStep: navigation.currentStep,
+    });
+  } catch (error) {
+    console.error("❌ verifyRouteEndpoint error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Route verification failed",
+    });
+  }
+};
+
+// ============================================
+// SIGNUP
+// ============================================
 exports.signup = async (req, res) => {
   try {
     const { firstname, lastname, email, password, role } = req.body;
@@ -83,21 +345,15 @@ exports.signup = async (req, res) => {
       role: role || "student",
       isVerified: false,
       emailVerifyToken: verifyToken,
-      emailVerifyExpire: Date.now() + 15 * 60 * 1000, // 15 minutes
+      emailVerifyExpire: Date.now() + 15 * 60 * 1000,
     });
 
-    // 🔥 FRONTEND LINK ONLY
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
 
     await sendEmail({
       to: email,
-      subject: "Verify your email",
-      html: `
-        <h2>Hello ${firstname}</h2>
-        <p>Please verify your email</p>
-        <a href="${verifyUrl}">Verify Email</a>
-        <p>This link expires in 15 minutes</p>
-      `,
+      subject: "Verify your email address",
+      html: verifyEmailTemplate({ firstname, verifyUrl }),
     });
 
     res.status(201).json({
@@ -110,46 +366,9 @@ exports.signup = async (req, res) => {
   }
 };
 
-
-
-// exports.verifyEmail = async (req, res) => {
-//   try {
-//     const { token } = req.params;
-
-//     console.log("🔍 Verification attempt with token:", token);
-
-//     const user = await User.findOne({
-//       emailVerifyToken: token,
-//       emailVerifyExpire: { $gt: Date.now() },
-//     });
-
-//     if (!user) {
-//       console.log("❌ No user found or token expired");
-//       return res.status(400).json({ message: "Invalid or expired token" });
-//     }
-
-//     console.log("✅ User found:", user.email);
-
-//     user.isVerified = true;
-//     user.emailVerifyToken = undefined;
-//     user.emailVerifyExpire = undefined;
-
-//     await user.save();
-
-//     console.log("✅ User verified successfully:", user.email);
-
-//     res.json({
-//       success: true,
-//       email:user.email,
-//       isVerified:user.isVerified,
-//       message: "Email verified successfully",
-//     });
-
-//   } catch (err) {
-//     console.error("❌ Verify email error:", err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+// ============================================
+// VERIFY EMAIL
+// ============================================
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
@@ -184,156 +403,20 @@ exports.verifyEmail = async (req, res) => {
       message: "Email verified successfully",
     });
   } catch (err) {
+    console.error("❌ Verify email error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-// exports.resendVerificationEmail = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     if (!email) {
-//       return res.status(400).json({ message: "Email is required" });
-//     }
-
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // 🚫 Already verified
-//     if (user.isVerified) {
-//       return res.status(400).json({
-//         message: "Email already verified"
-//       });
-//     }
-
-//     // 🔁 Generate new token
-//     const verifyToken = crypto.randomBytes(32).toString("hex");
-
-//     user.emailVerifyToken = verifyToken;
-//     user.emailVerifyExpire = Date.now() + 7 * 24 * 60 * 60 * 1000; // ✅ 7 days
-//     await user.save();
-
-//     const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
-//     // const verifyUrl = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`;
-
-//     const emailHtml = `
-//       <div style="font-family: Arial; padding: 20px;">
-//         <h2>Hello ${user.firstname} 👋</h2>
-//         <p>Please verify your email to activate your account.</p>
-
-//         <a href="${verifyUrl}"
-//            style="
-//             display:inline-block;
-//             padding:12px 20px;
-//             background:#4CAF50;
-//             color:#fff;
-//             text-decoration:none;
-//             border-radius:5px;
-//             margin-top:10px;
-//            ">
-//           Verify Email
-//         </a>
-
-//         <p style="margin-top:20px;">
-//           This link will expire in <b>7 days</b>.
-//         </p>
-//       </div>
-//     `;
-
-//     await sendEmail({
-//       to: email,
-//       subject: "Resend Email Verification",
-//       html: emailHtml,
-//     });
-
-//     console.log("🔁 Verification email resent to:", email);
-
-//     res.json({
-//       success: true,
-//       message: "Verification email resent successfully"
-//     });
-
-//   } catch (err) {
-//     console.error("❌ Resend verification error:", err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-// ✅ ✅ LOGIN API
+// ============================================
+// RESEND VERIFICATION EMAIL
+// ============================================
 exports.resendVerificationEmail = async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) return res.status(400).json({ message: "Email required" });
-
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  if (user.isVerified) {
-    return res.status(400).json({ message: "Email already verified" });
-  }
-
-  const verifyToken = crypto.randomBytes(32).toString("hex");
-
-  user.emailVerifyToken = verifyToken;
-  user.emailVerifyExpire = Date.now() + 15 * 60 * 1000;
-  await user.save();
-
-  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
-
-  await sendEmail({
-    to: email,
-    subject: "Verify your email (Resent)",
-    html: `<a href="${verifyUrl}">Verify Email</a>`,
-  });
-
-  res.json({ success: true, message: "Verification email resent" });
-};
-
-
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email }).select("+password");
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
-
-    if (!user.isVerified) {
-      return res.status(403).json({
-        message: "Please verify your email before login",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(401).json({ message: "Invalid credentials" });
-
-    // ✅ CORRECT TOKEN
-    const token = generateToken(user);
-
-    // ✅ REMOVE PASSWORD
-    user.password = undefined;
-
-    res.json({
-      success: true,
-      token,
-      user,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email required" });
     }
 
     const user = await User.findOne({ email });
@@ -341,110 +424,34 @@ exports.forgotPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // 🔐 Generate reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
 
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+
+    user.emailVerifyToken = verifyToken;
+    user.emailVerifyExpire = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
 
     await sendEmail({
       to: email,
-      subject: "Reset Your Password",
-      html: `
-        <h2>Hello ${user.firstname}</h2>
-        <p>Click below to reset your password:</p>
-        <a href="${resetUrl}">Reset Password</a>
-        <p>This link will expire in 15 minutes.</p>
-      `,
+      subject: "Verify your email (Resent)",
+      html: `<a href="${verifyUrl}">Verify Email</a>`,
     });
 
-    res.json({
-      success: true,
-      message: "Password reset link sent to email",
-    });
-
+    res.json({ success: true, message: "Verification email resent" });
   } catch (err) {
-    console.error("Forgot Password Error:", err);
+    console.error("❌ Resend verification error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-exports.resetPassword = async (req, res) => {
-  try {
-    const { token } = req.params;
-    const { password, confirmPassword } = req.body;
-
-    if (!password || !confirmPassword) {
-      return res.status(400).json({ message: "All fields required" });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
-    }
-
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
-
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
-    }
-
-    user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Password reset successful",
-    });
-
-  } catch (err) {
-    console.error("Reset Password Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-exports.changePassword = async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-
-    const user = await User.findById(req.user.id).select("+password");
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Old password incorrect" });
-    }
-
-    user.password = newPassword;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Password changed successfully",
-    });
-
-  } catch (err) {
-    console.error("Change Password Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
+// ============================================
+// LOGOUT
+// ============================================
 exports.logout = async (req, res) => {
   try {
     res.json({
@@ -456,116 +463,8 @@ exports.logout = async (req, res) => {
   }
 };
 
-
-
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-
-
-exports.forgotPasswordNew = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email)
-      return res.status(400).json({ message: "Email is required" });
-
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
-
-    // 🔢 Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // 🔐 Hash OTP
-    const hashedOtp = crypto
-      .createHash("sha256")
-      .update(otp)
-      .digest("hex");
-
-    user.forgotPasswordOTP = hashedOtp;
-    user.forgotPasswordOTPExpire = Date.now() + 15 * 60 * 1000; // 15 min
-    await user.save();
-
-    await sendEmail({
-      to: email,
-      subject: "Password Reset Code",
-      html: `
-        <h2>Password Reset</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>This code expires in 15 minutes.</p>
-      `,
-    });
-
-    res.json({
-      success: true,
-      message: "OTP sent to email",
-    });
-
-  } catch (err) {
-    console.error("Forgot Password Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-
-
-exports.verifyResetCode = async (req, res) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code)
-      return res.status(400).json({ message: "Email and code required" });
-
-    const hashedCode = crypto
-      .createHash("sha256")
-      .update(code)
-      .digest("hex");
-
-    const user = await User.findOne({
-      email,
-      forgotPasswordOTP: hashedCode,
-      forgotPasswordOTPExpire: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    res.json({
-      success: true,
-      message: "OTP verified successfully",
-    });
-
-  } catch (err) {
-    console.error("Verify OTP Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-exports.resetPasswordNew = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: "All fields required" });
-
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
-
-    user.password = password; // hashed by pre-save hook
-    user.forgotPasswordOTP = undefined;
-    user.forgotPasswordOTPExpire = undefined;
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Password reset successfully",
-    });
-
-  } catch (err) {
-    console.error("Reset Password Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+// ============================================
+// EXPORT HELPERS (for testing/reuse)
+// ============================================
+exports.getCompletionStatus = getCompletionStatus;
+exports.calculateNavigation = calculateNavigation;
