@@ -7,11 +7,14 @@ const User = require("../models/userModel");
 // Get all available plans
 exports.getAllPlans = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find({ isActive: true }).sort({
-      order: 1,
-    });
+    const plans = await SubscriptionPlan
+      .find({ isActive: { $ne: false } })
+      .sort({ order: 1, createdAt: 1 })
+      .lean();
+
     res.status(200).json({
       success: true,
+      count: plans.length,
       data: plans,
     });
   } catch (error) {
@@ -21,6 +24,7 @@ exports.getAllPlans = async (req, res) => {
     });
   }
 };
+
 
 // Create subscription with dummy payment
 exports.createSubscription = async (req, res) => {
