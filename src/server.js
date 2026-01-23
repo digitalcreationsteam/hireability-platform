@@ -15,20 +15,19 @@ connectDB().then(() => {
   /* =======================
      Global Middlewares
   ======================= */
+
+
+  app.use(
+    cors({
+      origin: process.env.CLIENT_URL,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    })
+  );
   // app.use(cors({
   //   origin: process.env.CLIENT_URL,
   //   credentials: true,
   // }));
-
-
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
-);
-
   app.use(express.json());
   /* =======================
      Session (MUST be before passport)
@@ -62,7 +61,8 @@ app.use(
   /* =======================
      Static files
   ======================= */
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  // Serve uploaded files from project-level /uploads (one level above src)
+  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
   /* =======================
      Routes
   ======================= */
