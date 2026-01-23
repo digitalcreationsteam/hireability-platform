@@ -61,7 +61,8 @@ connectDB().then(() => {
   /* =======================
      Static files
   ======================= */
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  // Serve uploaded files from project-level /uploads (one level above src)
+  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
   /* =======================
      Routes
   ======================= */
