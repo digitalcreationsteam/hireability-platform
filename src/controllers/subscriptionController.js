@@ -7,8 +7,7 @@ const User = require("../models/userModel");
 // Get all available plans
 exports.getAllPlans = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan
-      .find({ isActive: { $ne: false } })
+    const plans = await SubscriptionPlan.find({ isActive: { $ne: false } })
       .sort({ order: 1, createdAt: 1 })
       .lean();
 
@@ -25,14 +24,12 @@ exports.getAllPlans = async (req, res) => {
   }
 };
 
-
-// Create subscription with dummy payment
+// ✅ CREATE SUBSCRIPTION (ACTIVE IMMEDIATELY)
 exports.createSubscription = async (req, res) => {
   try {
     const { planId, paymentMethod = "razorpay" } = req.body;
     const userId = req.user._id;
 
-    // Validation
     if (!planId) {
       return res.status(400).json({
         success: false,
@@ -40,7 +37,6 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    // Fetch the plan
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
       return res.status(404).json({
@@ -49,32 +45,18 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    // Cancel any existing active subscriptions
+    // Cancel old subscriptions
     await Subscription.updateMany(
       { user: userId, status: { $in: ["active", "pending"] } },
       { status: "canceled" }
     );
 
-    // Create dummy payment order
     const orderId = `order_${Date.now()}`;
-    const paymentDetails = {
-      id: orderId,
-      amount: plan.price * 100, // Convert to cents
-      currency: plan.currency,
-      status: "created",
-      receipt: `receipt_${userId}_${Date.now()}`,
-      created_at: new Date(),
-    };
 
-    console.log(`📦 Creating subscription for userId: ${userId}, plan: ${plan.name}`);
-    console.log(`✅ Order created:`, paymentDetails);
-
-    // Calculate period dates
     const now = new Date();
     const currentPeriodStart = now;
-    let currentPeriodEnd = new Date(now);
+    const currentPeriodEnd = new Date(now);
 
-    // Set period end based on billing period
     if (plan.billingPeriod === "monthly") {
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
     } else if (plan.billingPeriod === "yearly") {
@@ -83,53 +65,34 @@ exports.createSubscription = async (req, res) => {
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 3);
     }
 
-    // Create subscription document with all required fields
-    const subscription = new Subscription({
+    // 🔥 IMPORTANT FIX → status = "active"
+    const subscription = await Subscription.create({
       user: userId,
       plan: planId,
-      planName: plan.name, // ✅ Set planName
-      amount: plan.price, // ✅ Set amount
+      planName: plan.name,
+      amount: plan.price,
       currency: plan.currency,
-      status: plan.price === 0 ? "active" : "pending", // Auto-activate free plans
-      paymentMethod: paymentMethod,
+      status: "active", // ✅ FIXED
+      paymentMethod,
       billingPeriod: plan.billingPeriod,
-      currentPeriodStart: currentPeriodStart,
-      currentPeriodEnd: currentPeriodEnd,
+      currentPeriodStart,
+      currentPeriodEnd,
       razorpayOrderId: orderId,
-      metadata: {
-        orderDetails: JSON.stringify(paymentDetails),
-      },
     });
-
-    // Save subscription
-    await subscription.save();
-
-    console.log(`✅ Subscription saved for user: ${userId}`);
-
-    // If free plan, mark as active immediately
-    if (plan.price === 0) {
-      subscription.status = "active";
-      await subscription.save();
-    }
 
     res.status(201).json({
       success: true,
       message: "Subscription created successfully",
       data: {
         subscriptionId: subscription._id,
-        orderId: orderId,
-        planName: plan.name,
-        amount: plan.price,
-        currency: plan.currency,
         status: subscription.status,
-        paymentDetails: paymentDetails,
       },
     });
   } catch (error) {
-    console.error("❌ Error creating subscription:", error.message);
+    console.error("❌ createSubscription error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to create subscription",
+      message: "Failed to create subscription",
     });
   }
 };

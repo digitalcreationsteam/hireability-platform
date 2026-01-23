@@ -45,77 +45,49 @@ const FRONTEND_ONLY_STEPS = ["skill-index-intro", "assessment-intro"];
 // HELPER: Get completion status from database
 // ============================================
 const getCompletionStatus = async (userId) => {
-  try {
-    const [
-      demographics,
-      education,
-      experience,
-      certifications,
-      awards,
-      projects,
-      subscription,
-      userDomainSkill,
-      assessment,
-    ] = await Promise.all([
-      Demographics.findOne({ userId }).lean(),
-      Education.findOne({ userId }).lean(),
-      Experience.findOne({ userId }).lean(),
-      Certification.findOne({ userId }).lean(),
-      Award.findOne({ userId }).lean(),
-      Project.findOne({ userId }).lean(),
-      Subscription.findOne({ user: userId, status: "active" }).lean(),
-      UserDomainSkill.findOne({ userId }).lean(), // ✅ Check UserDomainSkill
-      SkillAssessment.findOne({ userId }).lean(),
-    ]);
+  const [
+    demographics,
+    education,
+    experience,
+    certifications,
+    awards,
+    projects,
+    subscription,
+    userDomainSkill,
+    assessment,
+  ] = await Promise.all([
+    Demographics.findOne({ userId }),
+    Education.findOne({ userId }),
+    Experience.findOne({ userId }),
+    Certification.findOne({ userId }),
+    Award.findOne({ userId }),
+    Project.findOne({ userId }),
+    Subscription.findOne({ user: userId, status: "active" }),
+    UserDomainSkill.findOne({ userId }),
+    SkillAssessment.findOne({ userId }),
+  ]);
 
-    console.log("📊 Completion Status Debug:", {
-      demographics: !!demographics?._id,
-      education: !!education?._id,
-      experience: !!experience?._id,
-      certifications: !!certifications?._id,
-      awards: !!awards?._id,
-      projects: !!projects?._id,
-      paywall: !!subscription?._id,
-      "job-domain": !!userDomainSkill?._id && !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
-      skills: (userDomainSkill?.skills?.length || 0) > 0,
-      assessment: !!assessment?.startedAt && !assessment?.completedAt,
-      "assessment-results": !!assessment?.completedAt,
-    });
-
-    return {
-      demographics: !!demographics?._id,
-      education: !!education?._id,
-      experience: !!experience?._id,
-      certifications: !!certifications?._id,
-      awards: !!awards?._id,
-      projects: !!projects?._id,
-      paywall: !!subscription?._id, // ✅ Mark paywall complete if subscription exists
-      "job-domain": !!userDomainSkill?._id && !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId, // ✅ Check UserDomainSkill
-      skills: (userDomainSkill?.skills?.length || 0) > 0, // ✅ Check skills array in UserDomainSkill
-      assessment: !!assessment?.startedAt && !assessment?.completedAt,
-      "assessment-results": !!assessment?.completedAt,
-    };
-  } catch (error) {
-    console.error("❌ Error getting completion status:", error);
-    return {};
-  }
+  return {
+    demographics: !!demographics,
+    education: !!education,
+    experience: !!experience,
+    certifications: !!certifications,
+    awards: !!awards,
+    projects: !!projects,
+    paywall: !!subscription, // ✅ THIS IS THE KEY
+    "job-domain":
+      !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    skills: (userDomainSkill?.skills?.length || 0) > 0,
+    assessment: !!assessment?.startedAt && !assessment?.completedAt,
+    "assessment-results": !!assessment?.completedAt,
+  };
 };
 
-// ============================================
-// HELPER: Calculate navigation from status
-// ============================================
-const calculateNavigation = (completionStatus) => {
-  // Find first incomplete step (only from STEP_SEQUENCE)
+// ================= NAVIGATION =================
+const calculateNavigation = (status) => {
   const currentStep =
-    STEP_SEQUENCE.find((step) => !completionStatus[step]) ||
-    "assessment-results";
+    STEP_SEQUENCE.find((step) => !status[step]) || "assessment-results";
 
-  // Get all completed steps
-  const completedSteps = STEP_SEQUENCE.filter(
-    (step) => completionStatus[step]
-  );
-
-  // Map steps to routes
   const stepToRoute = {
     demographics: "/demographics",
     education: "/education",
@@ -130,33 +102,42 @@ const calculateNavigation = (completionStatus) => {
     "assessment-results": "/assessment-results",
   };
 
-  // ✅ Handle frontend-only steps
   let nextRoute = stepToRoute[currentStep];
 
-  // If next step is paywall and it's completed, skip to job-domain
-  if (currentStep === "paywall" && completionStatus.paywall) {
+  if (currentStep === "paywall" && status.paywall) {
     nextRoute = "/job-domain";
   }
 
-  // If next step is job-domain and it's completed, skip to skills
-  if (currentStep === "job-domain" && completionStatus["job-domain"]) {
+  if (currentStep === "job-domain" && status["job-domain"]) {
     nextRoute = "/skills";
   }
 
-  // If next step is skills and it's completed, skip to assessment
-  if (currentStep === "skills" && completionStatus.skills) {
+  if (currentStep === "skills" && status.skills) {
     nextRoute = "/assessment";
   }
 
   return {
-    nextRoute: nextRoute || "/demographics",
+    nextRoute,
     currentStep,
-    completedSteps,
+    completedSteps: STEP_SEQUENCE.filter((s) => status[s]),
+    hasPayment: status.paywall,
     isOnboardingComplete:
       currentStep === "assessment-results" &&
-      completionStatus["assessment-results"],
-    hasPayment: completionStatus.paywall || false,
+      status["assessment-results"],
   };
+};
+
+// ================= GET USER STATUS =================
+exports.getUserStatus = async (req, res) => {
+  const userId = req.user._id;
+
+  const status = await getCompletionStatus(userId);
+  const navigation = calculateNavigation(status);
+
+  res.status(200).json({
+    success: true,
+    navigation,
+  });
 };
 
 // ============================================
@@ -236,46 +217,7 @@ exports.login = async (req, res) => {
 // ============================================
 // GET USER STATUS - Called after saving steps
 // ============================================
-exports.getUserStatus = async (req, res) => {
-  try {
-    // Get userId from auth middleware
-    const userId = req.user?.id || req.user?._id;
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized - User not found",
-      });
-    }
-
-    console.log("🔍 getUserStatus called for userId:", userId);
-
-    // Get completion status
-    const completionStatus = await getCompletionStatus(userId);
-    console.log("📊 Completion status:", completionStatus);
-
-    // Calculate navigation
-    const navigation = calculateNavigation(completionStatus);
-    console.log("🧭 Navigation:", navigation);
-
-    res.status(200).json({
-      success: true,
-      navigation: {
-        nextRoute: navigation.nextRoute,
-        currentStep: navigation.currentStep,
-        completedSteps: navigation.completedSteps,
-        isOnboardingComplete: navigation.isOnboardingComplete,
-        hasPayment: navigation.hasPayment,
-      },
-    });
-  } catch (error) {
-    console.error("❌ getUserStatus error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get user status",
-    });
-  }
-};
 
 // ============================================
 // VERIFY ROUTE - Optional security check
@@ -447,6 +389,111 @@ exports.resendVerificationEmail = async (req, res) => {
     console.error("❌ Resend verification error:", err);
     res.status(500).json({ message: "Server error" });
   }
+};
+
+// ============================================
+// FORGOT PASSWORD FLOW (REQUIRED)
+// ============================================
+
+exports.forgotPasswordNew = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.forgotPasswordOTP = otp;
+    user.forgotPasswordOTPExpire = Date.now() + 10 * 60 * 1000;
+    // 10 min
+    await user.save({ validateBeforeSave: false });
+
+    await sendEmail({
+      to: user.email,
+      subject: "Password Reset OTP",
+      html: `<h3>Your OTP is: ${otp}</h3>`,
+    });
+    console.log("✅ OTP GENERATED:", otp);
+    console.log("✅ Email sended to:", email);
+
+    res.json({
+      success: true,
+      message: "OTP sent to email",
+    });
+  } 
+  // catch (error) {
+  //   console.error("❌ Forgot password error:", error);
+  //   res.status(500).json({
+  //     success: false,
+  //     message: "Unable to send reset code",
+  //   });
+  // }
+  catch (error) {
+  console.error("❌ EMAIL ERROR:", error.message);
+  res.status(500).json({
+    success: false,
+    message: "Unable to send reset code",
+  });
+}
+
+};
+
+exports.verifyResetCode = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({
+      email,
+      forgotPasswordOTP: String(otp),
+      forgotPasswordOTPExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired code",
+      });
+    }
+
+    user.forgotPasswordOTP = undefined;
+    user.forgotPasswordOTPExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
+  } catch (error) {
+    console.error("VERIFY RESET ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
+    });
+  }
+};
+
+
+exports.resetPasswordNew = async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  user.password = password;
+  user.forgotPasswordOTP = undefined;
+  user.forgotPasswordOTPExpire = undefined;
+
+  await user.save();
+
+  res.json({ success: true, message: "Password reset successful" });
 };
 
 // ============================================
