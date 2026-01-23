@@ -51,7 +51,7 @@ router.post("/verify-route", auth, verifyRouteEndpoint);
 /* ✅ FORGOT PASSWORD (only if functions exist) */
 if (forgotPasswordNew) {
   router.post("/forgot-password", forgotPasswordNew);
-  router.post("/verify-reset-otp", verifyResetCode);
+  router.post("/verify-reset-code", verifyResetCode);
   router.post("/reset-password", resetPasswordNew);
 }
 
