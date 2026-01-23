@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { type } = require("os");
 
 const WorkSchema = new mongoose.Schema(
   {
@@ -19,13 +20,19 @@ const WorkSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
+    startMonth: {
+      type: Number,
+      required: true,
+    },
     startYear: {
       type: Number,
       required: true,
     },
 
     endYear: {
+      type: Number,
+    },
+    endMonth:{
       type: Number,
     },
 
@@ -39,7 +46,7 @@ const WorkSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
-    typeofRole: {
+    typeOfRole: {
           type: String,
           required: false,
           trim: true,
@@ -58,3 +65,8 @@ const WorkSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("WorkExperience", WorkSchema);
+
+
+
+
+
