@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { type } = require("os");
 
 const WorkSchema = new mongoose.Schema(
   {
@@ -19,16 +20,15 @@ const WorkSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
+    startMonth: {
+      type: Number,
+      required: true,
+    },
     startYear: {
       type: Number,
       required: true,
     },
 
-    startMonth: {
-      type: Number,
-      required: true,
-    },
 
     endYear: {
       type: Number,
@@ -38,6 +38,9 @@ const WorkSchema = new mongoose.Schema(
     endMonth: {
       type: Number,
       required: true,
+    },
+    endMonth:{
+      type: Number,
     },
 
     currentlyWorking: {
@@ -55,6 +58,7 @@ const WorkSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+         
     workScore: {
       type: Number,
       default: 0,
@@ -69,3 +73,8 @@ const WorkSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("WorkExperience", WorkSchema);
+
+
+
+
+
