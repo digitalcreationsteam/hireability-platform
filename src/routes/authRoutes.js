@@ -65,15 +65,31 @@ router.get(
   })
 );
 
-router.get(
-  "/google/callback",
-  passport.authenticate("google", { session: false }),
+// @route   GET /auth/google/callback
+// @desc    Google callback route
+router.get('/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
-    res.redirect(
-      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}`
-    );
+    // Successful authentication, redirect to frontend
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
   }
 );
+
+// @route   GET /auth/logout
+// @desc    Logout user
+router.get('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ error: 'Logout failed' });
+    res.redirect(process.env.CLIENT_URL);
+  });
+});
+
+// @route   GET /auth/current_user
+// @desc    Get current logged in user
+router.get('/current_user', (req, res) => {
+  res.json(req.user || null);
+});
+
 
 /* =================================================
    🔗 LINKEDIN OAUTH

@@ -18,7 +18,7 @@ const testAttemptSchema = new mongoose.Schema(
     subDomainId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubDomain",
-      required: true,
+      required: false,
     },
 
     totalQuestions: {

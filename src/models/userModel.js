@@ -11,10 +11,17 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // Add these fields for Google OAuth
+    googleId: {
+      type: String,
+      sparse: true // Allows null values while keeping unique constraint
+    },
 
     email: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleId;
+      },// Required only if not using Google
       unique: true,
       lowercase: true,
       validate: [validator.isEmail, "Invalid email"],
@@ -22,7 +29,9 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleId;
+      }, // Required only if not using Google
       minlength: 6,
       select: false,
     },
