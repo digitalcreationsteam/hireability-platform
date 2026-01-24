@@ -346,11 +346,7 @@ router.get(
 // =================================================
 
 // =================================================
-// Assessment (STUDENT)
-// =================================================
-// router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
-// router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
-// router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
+
 
 // Submit test
 router.post(
@@ -378,24 +374,17 @@ router.get(
   assessmentController.getAttemptQuestions
 );
 
-// router.post(
-//   "/assessment/retake",
-//   protect,
-//   authorizeRoles("student"),
-//   assessmentController.retakeAssessment
-// );
-
 router.get(
   "/assessment/result/latest",
   protect,
   authorizeRoles("student"),
   assessmentController.getLatestResult
 );
-// router.get(
-//   "/assessment/availability",
-//   protect,
-//   authorizeRoles("student"),
-//   assessmentController.getAssessmentAvailability
-// );
+
+// Assessment (STUDENT)
+// =================================================
+// router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
+// router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
+// router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 module.exports = router;
