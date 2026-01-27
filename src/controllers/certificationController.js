@@ -27,9 +27,9 @@ const updateUserCertificationScore = async (userId) => {
   await User.findByIdAndUpdate(
     userId,
     { "experienceIndex.certificationScore": certificationScore },
-    { new: true }
+    { new: true },
   );
- await recalculateUserScore(userId);
+  await recalculateUserScore(userId);
   return certificationScore;
 };
 
@@ -52,6 +52,20 @@ exports.createCertification = async (req, res) => {
       return res.status(400).json({ message: "User ID missing in headers" });
     }
 
+    // 🔴 ADD THIS BLOCK (START)
+    const existingCount = await Certification.countDocuments({ userId });
+    const incomingCount = Array.isArray(req.body.certificationName)
+      ? req.body.certificationName.length
+      : 1;
+    if (existingCount + incomingCount > 5) {
+      return res
+        .status(400)
+        .json({
+          status: false,
+          message: "You can add a maximum of 5 certifications only.",
+        });
+    }
+    // 🔴 ADD THIS BLOCK (END)
     const {
       certificationName = [],
       issuer = [],
@@ -89,7 +103,7 @@ exports.createCertification = async (req, res) => {
 
     return res.status(201).json({
       message: "Certifications added successfully",
-      status:true,
+      status: true,
       count: savedCerts.length,
       certificationScore: score,
       data: savedCerts,
@@ -102,7 +116,6 @@ exports.createCertification = async (req, res) => {
   }
 };
 
-
 // ==================================================================
 // GET ALL CERTIFICATIONS OF USER
 // ==================================================================
@@ -114,12 +127,12 @@ exports.getCertifications = async (req, res) => {
 
     return res.status(200).json({
       message: "Certifications fetched successfully",
-      data: certs
+      data: certs,
     });
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching certifications",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -130,10 +143,12 @@ exports.getCertifications = async (req, res) => {
 exports.getCertificationById = async (req, res) => {
   try {
     // Get userId from headers
-    const userId = req.headers['user-id']; // use same key everywhere
+    const userId = req.headers["user-id"]; // use same key everywhere
 
     if (!userId) {
-      return res.status(400).json({ message: "User ID is required in headers" });
+      return res
+        .status(400)
+        .json({ message: "User ID is required in headers" });
     }
 
     // Find certification by id AND userId (security check)
@@ -160,7 +175,6 @@ exports.getCertificationById = async (req, res) => {
   }
 };
 
-
 // ==================================================================
 // UPDATE CERTIFICATION
 // ==================================================================
@@ -180,7 +194,12 @@ exports.updateCertification = async (req, res) => {
       const oldFile = existingCert.certificateFileUrl?.split("/").pop();
 
       if (oldFile) {
-        const oldPath = path.join("uploads", "certifications", userId.toString(), oldFile);
+        const oldPath = path.join(
+          "uploads",
+          "certifications",
+          userId.toString(),
+          oldFile,
+        );
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
 
@@ -192,13 +211,13 @@ exports.updateCertification = async (req, res) => {
       issuer: req.body.issuer,
       issueDate: req.body.issueDate,
       credentialLink: req.body.credentialLink || null,
-      certificateFileUrl: fileUrl
+      certificateFileUrl: fileUrl,
     };
 
     const updatedCert = await Certification.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true }
+      { new: true },
     );
 
     const score = await updateUserCertificationScore(userId);
@@ -206,12 +225,12 @@ exports.updateCertification = async (req, res) => {
     return res.status(200).json({
       message: "Certification updated successfully",
       certificationScore: score,
-      data: updatedCert
+      data: updatedCert,
     });
   } catch (error) {
     return res.status(500).json({
       message: "Error updating certification",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -232,7 +251,12 @@ exports.deleteCertification = async (req, res) => {
     // Delete file if exists
     if (cert.certificateFileUrl) {
       const fileName = cert.certificateFileUrl.split("/").pop();
-      const filePath = path.join("uploads", "certifications", userId.toString(), fileName);
+      const filePath = path.join(
+        "uploads",
+        "certifications",
+        userId.toString(),
+        fileName,
+      );
 
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
@@ -241,12 +265,12 @@ exports.deleteCertification = async (req, res) => {
 
     return res.status(200).json({
       message: "Certification deleted successfully",
-      certificationScore: score
+      certificationScore: score,
     });
   } catch (error) {
     return res.status(500).json({
       message: "Error deleting certification",
-      error: error.message
+      error: error.message,
     });
   }
 };

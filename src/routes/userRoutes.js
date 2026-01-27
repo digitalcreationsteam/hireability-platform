@@ -323,6 +323,12 @@ router.get(
   authorizeRoles("student"),
   awardController.getAwards
 );
+router.post(
+  "/awards/:id",
+  protect,
+  authorizeRoles("student"),
+  awardController.deleteAward
+);
 
 // =================================================
 // PROJECTS (STUDENT)
