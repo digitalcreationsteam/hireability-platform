@@ -381,6 +381,10 @@ router.get(
   assessmentController.getLatestResult
 );
 
+
+router.post("/assessment/:attemptId/violation", protect,  authorizeRoles("student"), assessmentController.reportViolation);
+// router.get("/assessment/:attemptId/integrity",protect,  authorizeRoles("student"),  assessmentController.getIntegrity);
+
 // Assessment (STUDENT)
 // =================================================
 // router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);

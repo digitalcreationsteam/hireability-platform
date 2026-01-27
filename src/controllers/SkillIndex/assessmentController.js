@@ -164,6 +164,7 @@ exports.submitAssessment = async (req, res) => {
         attemptId,
         skillIndex: attempt.skillIndex,
         maxSkillIndex: 300,
+        integrity: attempt.integrity, 
       });
     }
 
@@ -276,5 +277,86 @@ exports.getLatestResult = async (req, res) => {
   }
 };
 
+
 ///////////////////////////////////////////////////////////////
 
+const PENALTY = {
+  COPY: 10,
+  PASTE: 15,
+  TAB_SWITCH: 5,
+};
+
+function getIntegrityLevel(score) {
+  if (score >= 90) return "Excellent";
+  if (score >= 75) return "Good";
+  if (score >= 60) return "Moderate";
+  if (score >= 40) return "Low";
+  return "High Risk";
+}
+
+exports.reportViolation = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+    const { attemptId } = req.params;
+    const { type } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(attemptId))
+      return res.status(400).json({ message: "Invalid attempt ID" });
+
+    const attempt = await TestAttempt.findOne({
+      _id: attemptId,
+      userId,
+      status: "in_progress",
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!attempt) {
+      return res.status(404).json({ message: "Attempt not active" });
+    }
+
+    // 🔴 1. Save violation
+    attempt.violations.push({ type });
+
+    // 🔢 2. Recalculate integrity score
+    let totalPenalty = 0;
+    for (const v of attempt.violations) {
+      totalPenalty += PENALTY[v.type] || 0;
+    }
+
+    const score = Math.max(0, 100 - totalPenalty);
+    const level = getIntegrityLevel(score);
+
+    attempt.integrity.score = score;
+    attempt.integrity.level = level;
+
+    // 🚨 3. Check cheating threshold
+    const totalViolations = attempt.violations.length;
+
+    let alertTriggered = false;
+
+    if (totalViolations >= 3 && !attempt.cheatAlertSent) {
+      attempt.cheatAlertSent = true;
+      alertTriggered = true;
+
+      // Here you can also:
+      // - log to admin panel
+      // - send email
+      // - flag user
+      console.log(`🚨 Cheating alert: User ${userId} in attempt ${attemptId}`);
+    }
+
+    await attempt.save();
+
+    res.json({
+      success: true,
+      integrityScore: score,
+      integrityLevel: level,
+      totalViolations,
+      cheatAlert: alertTriggered, // frontend can show popup
+    });
+
+  } catch (err) {
+    console.error("Integrity Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

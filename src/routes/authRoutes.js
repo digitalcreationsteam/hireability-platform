@@ -8,8 +8,7 @@ const axios = require("axios");
 const crypto = require("crypto");
 
 // Import controller functions ONE BY ONE to avoid any import issues
-const signu
-p = require("../controllers/authController").signup;
+const signup = require("../controllers/authController").signup;
 const login = require("../controllers/authController").login;
 const verifyEmail = require("../controllers/authController").verifyEmail;
 const resendVerificationEmail = require("../controllers/authController").resendVerificationEmail;
