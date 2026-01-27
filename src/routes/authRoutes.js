@@ -8,7 +8,8 @@ const axios = require("axios");
 const crypto = require("crypto");
 
 // Import controller functions ONE BY ONE to avoid any import issues
-const signup = require("../controllers/authController").signup;
+const signu
+p = require("../controllers/authController").signup;
 const login = require("../controllers/authController").login;
 const verifyEmail = require("../controllers/authController").verifyEmail;
 const resendVerificationEmail = require("../controllers/authController").resendVerificationEmail;
@@ -70,26 +71,11 @@ router.get(
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
-    // Successful authentication, redirect to frontend
-    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    res.redirect(
+      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}`
+    );
   }
 );
-
-// @route   GET /auth/logout
-// @desc    Logout user
-router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) return res.status(500).json({ error: 'Logout failed' });
-    res.redirect(process.env.CLIENT_URL);
-  });
-});
-
-// @route   GET /auth/current_user
-// @desc    Get current logged in user
-router.get('/current_user', (req, res) => {
-  res.json(req.user || null);
-});
-
 
 /* =================================================
    🔗 LINKEDIN OAUTH
@@ -191,7 +177,23 @@ router.get("/linkedin/callback", async (req, res) => {
     await user.save();
 
     const token = generateToken(user._id);
-    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
+    
+    // Prepare user data with token
+    const userData = {
+      token,
+      id: user._id,
+      email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      role: user.role,
+      isVerified: user.isVerified,
+      socialLogin: user.socialLogin,
+    };
+    
+    // Encode user data in base64 for URL
+    const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
+    
+    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}&user=${userDataBase64}`);
   } catch (error) {
     console.error("❌ LinkedIn OAuth error:", error);
     res.redirect(`${process.env.FRONTEND_URL}/login`);
@@ -235,7 +237,15 @@ router.post("/linkedin/complete", async (req, res) => {
         success: true,
         merged: true,
         token,
-        user: existingUser,
+        user: {
+          id: existingUser._id,
+          email: existingUser.email,
+          firstname: existingUser.firstname,
+          lastname: existingUser.lastname,
+          role: existingUser.role,
+          isVerified: existingUser.isVerified,
+          socialLogin: existingUser.socialLogin,
+        },
       });
     }
 
@@ -253,7 +263,15 @@ router.post("/linkedin/complete", async (req, res) => {
       success: true,
       merged: false,
       token,
-      user: tempUser,
+      user: {
+        id: tempUser._id,
+        email: tempUser.email,
+        firstname: tempUser.firstname,
+        lastname: tempUser.lastname,
+        role: tempUser.role,
+        isVerified: tempUser.isVerified,
+        socialLogin: tempUser.socialLogin,
+      },
     });
   } catch (error) {
     console.error("❌ LinkedIn complete error:", error);
