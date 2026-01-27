@@ -9,6 +9,7 @@ const Project = require("../models/projectModel");
 const UserScore = require("../models/userScoreModel");
 const UserDomainSkill = require("../models/userDomainSkillModel");
 const UserDocument = require("../models/userDocumentModel");
+const userDomainSkill = require("../models/userDomainSkillModel");
 
 exports.getDashboardByUserId = async (req, res) => {
   try {
@@ -112,7 +113,12 @@ exports.getDashboardByUserId = async (req, res) => {
       documents: {
         resumeUrl: documents?.resumeUrl || null,
         profileUrl: documents?.profileUrl || null
+      },
+
+      jobdomain:{
+        domain: documents?.jobdomain || "Professional"
       }
+
     });
 
   } catch (err) {
