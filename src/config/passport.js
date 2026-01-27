@@ -14,7 +14,7 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
-
+console.log("Google profile:", profile);
         let user = await User.findOne({ email });
 
         if (!user) {
@@ -29,8 +29,9 @@ passport.use(
           });
         }
 
-        const token = generateToken(user);
+        const token = generateToken(user._id);
         user.token = token;
+console.log("Google profile:", user);
 
         done(null, user);
       } catch (err) {
@@ -40,47 +41,22 @@ passport.use(
   )
 );
 
+/* =====================================================
+   SESSION SERIALIZATION - REQUIRED FOR PASSPORT
+===================================================== */
+passport.serializeUser((user, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
+});
+
 ///LinkedIN:
-
-// passport.use(
-//   new LinkedInStrategy(
-//     {
-//       clientID: process.env.LINKEDIN_CLIENT_ID,
-//       clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-//       callbackURL: process.env.LINKEDIN_CALLBACK_URL,
-//       scope: ["openid", "profile", "email"],
-//     },
-//     async (accessToken, refreshToken, profile, done) => {
-//       try {
-//         const email =
-//           profile.emails?.[0]?.value || profile._json?.email || null;
-
-//         if (!email) {
-//           return done(new Error("LinkedIn email not available"), null);
-//         }
-
-//         let user = await User.findOne({ email });
-
-//         if (!user) {
-//           user = await User.create({
-//             firstname: profile.name?.givenName || "LinkedIn",
-//             lastname: profile.name?.familyName || "User",
-//             email,
-//             role: "student",
-//             socialLogin: "linkedin",
-//             linkedinId: profile.id,
-//             isVerified: true,
-//             password: "linkedin_oauth",
-//           });
-//         }
-
-//         const token = generateToken(user);
-//         user.token = token;
-
-//         done(null, user);
-//       } catch (err) {
-//         done(err, null);
-//       }
-//     }
-//   )
-// );
+// Note: LinkedIn OAuth is handled manually in routes/authRoutes.js
+// because LinkedIn's OpenID Connect endpoint requires custom flow
