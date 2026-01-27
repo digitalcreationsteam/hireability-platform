@@ -90,6 +90,66 @@ const testAttemptSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+
+    // Add this in TestAttempt schema (top-level)
+violations: [
+  {
+    type: {
+      type: String,
+      enum: [
+        "TAB_SWITCH",
+        "WINDOW_BLUR",
+        "FULLSCREEN_EXIT",
+        "COPY",
+        "PASTE",
+        "CONTEXT_MENU",
+        "DEVTOOLS",
+        "IDLE",
+        "OTHER",
+      ],
+      required: true,
+      index: true,
+    },
+    severity: {
+      type: Number, // 1 (low) -> 5 (high)
+      default: 1,
+      min: 1,
+      max: 5,
+    },
+    meta: {
+      type: Object, // { url, key, userAgent, etc }
+      default: {},
+    },
+    at: {
+      type: Date,
+      default: Date.now,
+      index: true,
+    },
+  },
+],
+cheatAlertSent: {
+  type: Boolean,
+  default: false
+},
+
+integrity: {
+  score: { type: Number, default: 100 },   // 0–100
+  level: { type: String, default: "Excellent" }
+},
+
+violations: [
+  {
+    type: {
+      type: String,
+      enum: ["COPY", "PASTE", "TAB_SWITCH"],
+      required: true
+    },
+    at: { type: Date, default: Date.now }
+  }
+],
+
+
   },
   { timestamps: true }
 );
