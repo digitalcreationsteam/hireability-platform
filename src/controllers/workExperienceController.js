@@ -19,29 +19,58 @@ const { recalculateUserScore } = require("../services/recalculateUserScore");
 /* --------------------------------------------------
    SCORE CALCULATION (SINGLE EXPERIENCE)
 -------------------------------------------------- */
+// const calculateSingleWorkScore = (exp) => {
+//   let score = 0;
+
+//   const months = exp.duration || 0; // duration in months
+//   const roleType = (exp.typeOfRole || "").toLowerCase();
+
+  // const pointsPerMonthMap = {
+  //   internship: 5,
+  //   contract: 5,
+  //   freelance: 3,
+  //   part_time: 4,
+  //   "part-time": 4,
+  //   full_time: 10,
+  //   "full-time": 10,
+  //   entrepreneurship: 5,
+  // };
+
+//   const pointsPerMonth = pointsPerMonthMap[roleType] || 0;
+
+//   score = months * pointsPerMonth;
+
+//   return score;
+// };
+
 const calculateSingleWorkScore = (exp) => {
   let score = 0;
 
-  const months = exp.duration || 0; // duration in months
+  const months = exp.duration || 0;
+
+  const years = months / 12;
+
   const roleType = (exp.typeOfRole || "").toLowerCase();
 
-  const pointsPerMonthMap = {
-    internship: 5,
-    contract: 5,
-    freelance: 3,
-    part_time: 4,
-    "part-time": 4,
-    full_time: 10,
-    "full-time": 10,
-    entrepreneurship: 5,
+  // points PER YEAR
+  const pointsPerYearMap = {
+    internship: 60,      // 5 × 12
+    contract: 60,
+    freelance: 36,       // 3 × 12
+    part_time: 48,       // 4 × 12
+    "part-time": 48,
+    full_time: 120,      // 10 × 12
+    "full-time": 120,
+    entrepreneurship: 60,
   };
 
-  const pointsPerMonth = pointsPerMonthMap[roleType] || 0;
+  const pointsPerYear = pointsPerYearMap[roleType] || 0;
 
-  score = months * pointsPerMonth;
+  score = Math.round(years * pointsPerYear);
 
   return score;
 };
+
 
 /* --------------------------------------------------
    TOTAL WORK SCORE (FROM DB RECORDS)
