@@ -6,6 +6,7 @@ const generateToken = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const UserDocument = require("../models/userDocumentModel");
 const Demographics = require("../models/demographicsModel");
 const Education = require("../models/educationModel");
 const Experience = require("../models/workModel");
@@ -23,13 +24,14 @@ const verifyEmailTemplate = require("../utils/verifyEmail");
 // REMOVED: skill-index-intro, assessment-intro (frontend-only)
 // These are auto-skipped, not tracked in database
 const STEP_SEQUENCE = [
+  "paywall",
+  "resume",
   "demographics",
   "education",
   "experience",
   "certifications",
   "awards",
   "projects",
-  "paywall",
   "job-domain",
   "skills",
   "assessment",
@@ -39,13 +41,14 @@ const STEP_SEQUENCE = [
 // ============================================
 // FRONTEND-ONLY STEPS (auto-skipped)
 // ============================================
-const FRONTEND_ONLY_STEPS = ["skill-index-intro", "assessment-intro"];
+const FRONTEND_ONLY_STEPS = ["talent-ranking-intro", "skill-index-intro", "assessment-intro"];
 
 // ============================================
 // HELPER: Get completion status from database
 // ============================================
 const getCompletionStatus = async (userId) => {
   const [
+    userDocument,  //for resume
     demographics,
     education,
     experience,
@@ -56,6 +59,7 @@ const getCompletionStatus = async (userId) => {
     userDomainSkill,
     assessment,
   ] = await Promise.all([
+    UserDocument.findOne({ userId }), //for resume
     Demographics.findOne({ userId }),
     Education.findOne({ userId }),
     Experience.findOne({ userId }),
@@ -68,13 +72,14 @@ const getCompletionStatus = async (userId) => {
   ]);
 
   return {
+    paywall: !!subscription, // ✅ THIS IS THE KEY
+    resume: !!userDocument?.resumeUrl,
     demographics: !!demographics,
     education: !!education,
     experience: !!experience,
     certifications: !!certifications,
     awards: !!awards,
     projects: !!projects,
-    paywall: !!subscription, // ✅ THIS IS THE KEY
     "job-domain":
       !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
     skills: (userDomainSkill?.skills?.length || 0) > 0,
@@ -89,13 +94,14 @@ const calculateNavigation = (status) => {
     STEP_SEQUENCE.find((step) => !status[step]) || "assessment-results";
 
   const stepToRoute = {
+    paywall: "/paywall",
+    resume: "/upload-resume",
     demographics: "/demographics",
     education: "/education",
     experience: "/experience",
     certifications: "/certifications",
     awards: "/awards",
     projects: "/projects",
-    paywall: "/paywall",
     "job-domain": "/job-domain",
     skills: "/skills",
     assessment: "/assessment",
@@ -104,9 +110,9 @@ const calculateNavigation = (status) => {
 
   let nextRoute = stepToRoute[currentStep];
 
-  if (currentStep === "paywall" && status.paywall) {
-    nextRoute = "/job-domain";
-  }
+  // if (currentStep === "paywall" && status.paywall) {
+  //   nextRoute = "/job-domain";
+  // }
 
   if (currentStep === "job-domain" && status["job-domain"]) {
     nextRoute = "/skills";

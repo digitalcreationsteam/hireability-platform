@@ -347,6 +347,14 @@ router.get(
   projectController.getProjects
 );
 
+router.post(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.deleteProject
+);
+
+
 // =================================================
 // RANKING (STUDENT)
 // =================================================
