@@ -19,9 +19,9 @@ const updateUserProjectScore = async (userId) => {
   await User.findByIdAndUpdate(
     userId,
     { "experienceIndex.projectScore": projectScore },
-    { new: true }
+    { new: true },
   );
- await recalculateUserScore(userId);
+  await recalculateUserScore(userId);
   return projectScore;
 };
 
@@ -34,23 +34,37 @@ exports.createMultipleProjects = async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: "User ID missing in header" });
     }
+    // ✅ MAX PROJECT LIMIT (5)
+    const existingCount = await Project.countDocuments({ userId });
+
+    const incomingCount = Array.isArray(req.body.projects)
+      ? req.body.projects.length
+      : 1;
+
+    if (existingCount + incomingCount > 5) {
+      return res.status(400).json({
+        status: false,
+        message: "You can add a maximum of 5 projects only.",
+      });
+    }
+    // end max project
 
     const { projects } = req.body;
 
     if (!Array.isArray(projects) || projects.length === 0) {
       return res.status(400).json({
-        message: "projects must be a non-empty array"
+        message: "projects must be a non-empty array",
       });
     }
 
-    const projectDocs = projects.map(p => ({
+    const projectDocs = projects.map((p) => ({
       userId,
       projectName: p.projectName,
       role: p.role,
       summary: p.summary,
       outcome: p.outcome,
       link: p.link,
-      projectScore: 3
+      projectScore: 3,
     }));
 
     const insertedProjects = await Project.insertMany(projectDocs);
@@ -61,13 +75,12 @@ exports.createMultipleProjects = async (req, res) => {
       message: "Projects added successfully",
       totalAdded: insertedProjects.length,
       projectScore: score,
-      data: insertedProjects
+      data: insertedProjects,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error creating projects",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -80,17 +93,15 @@ exports.getProjects = async (req, res) => {
 
     return res.status(200).json({
       message: "Projects fetched successfully",
-      data: projects
+      data: projects,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching projects",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.getProjectById = async (req, res) => {
   try {
@@ -102,25 +113,21 @@ exports.getProjectById = async (req, res) => {
 
     return res.status(200).json({
       message: "Project fetched",
-      data: project
+      data: project,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching project",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-
 exports.updateProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const project = await Project.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
@@ -132,17 +139,15 @@ exports.updateProject = async (req, res) => {
     return res.status(200).json({
       message: "Project updated",
       projectScore: score,
-      data: project
+      data: project,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error updating project",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.deleteProject = async (req, res) => {
   try {
@@ -157,13 +162,12 @@ exports.deleteProject = async (req, res) => {
 
     return res.status(200).json({
       message: "Project deleted",
-      projectScore: score
+      projectScore: score,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error deleting project",
-      error: error.message
+      error: error.message,
     });
   }
 };
