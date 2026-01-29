@@ -17,7 +17,7 @@ const projectSchema = new mongoose.Schema(
     },
     summary: {
       type: String,
-      required: true,
+      required: false,
     },
     outcome: {
       type: String,
