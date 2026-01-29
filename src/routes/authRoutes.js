@@ -75,8 +75,19 @@ router.get(
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
+    const userData = {
+      token: req.user.token,
+      id: req.user._id,
+      email: req.user.email,
+      firstname: req.user.firstname,
+      lastname: req.user.lastname,
+      role: req.user.role,
+      isVerified: req.user.isVerified,
+      socialLogin: req.user.socialLogin,
+    };
+    const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
     res.redirect(
-      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}`
+      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}&user=${userDataBase64}`
     );
   }
 );
@@ -88,18 +99,34 @@ router.get('/google/callback',
 /* Step 1: Redirect to LinkedIn */
 router.get("/linkedin", (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
+  const redirectUri = process.env.LINKEDIN_CALLBACK_URL;
+
+  if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
+    console.error("❌ LinkedIn credentials not configured in .env");
+    return res.status(500).json({ error: "LinkedIn credentials not configured" });
+  }
+
+  if (!redirectUri) {
+    console.error("❌ LINKEDIN_CALLBACK_URL not configured in .env");
+    return res.status(500).json({ error: "Callback URL not configured" });
+  }
+
+  //console.log("🔗 LinkedIn OAuth initiated");
+  // console.log("📋 Client ID:", process.env.LINKEDIN_CLIENT_ID);
+  // console.log("📋 Redirect URI:", redirectUri);
 
   const params = new URLSearchParams({
     response_type: "code",
     client_id: process.env.LINKEDIN_CLIENT_ID,
-    redirect_uri: process.env.LINKEDIN_CALLBACK_URL,
+    redirect_uri: redirectUri,
     scope: "openid profile email",
     state,
   });
 
-  res.redirect(
-    `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`
-  );
+  const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
+  console.log("🔗 Redirecting to:", linkedInAuthUrl);
+  
+  res.redirect(linkedInAuthUrl);
 });
 
 /* Step 2: LinkedIn Callback */
@@ -125,25 +152,13 @@ router.get("/linkedin/callback", async (req, res) => {
 
     const accessToken = tokenRes.data.access_token;
 
-    /* Fetch OpenID profile */
+    /* Fetch user profile (includes email in OpenID Connect) */
     const profileRes = await axios.get(
       "https://api.linkedin.com/v2/userinfo",
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
-    const { given_name, family_name, sub } = profileRes.data;
-
-    /* Try fetching email */
-    let email = null;
-    try {
-      const emailRes = await axios.get(
-        "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      email = emailRes.data.elements?.[0]?.["handle~"]?.emailAddress || null;
-    } catch {
-      console.log("⚠️ LinkedIn email not available");
-    }
+    const { given_name, family_name, email, sub } = profileRes.data;
 
     console.log("👉 LinkedIn Profile - Sub:", sub, "Email:", email);
 
