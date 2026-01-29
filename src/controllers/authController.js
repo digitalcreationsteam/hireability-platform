@@ -41,14 +41,18 @@ const STEP_SEQUENCE = [
 // ============================================
 // FRONTEND-ONLY STEPS (auto-skipped)
 // ============================================
-const FRONTEND_ONLY_STEPS = ["talent-ranking-intro", "skill-index-intro", "assessment-intro"];
+const FRONTEND_ONLY_STEPS = [
+  "talent-ranking-intro",
+  "skill-index-intro",
+  "assessment-intro",
+];
 
 // ============================================
 // HELPER: Get completion status from database
 // ============================================
 const getCompletionStatus = async (userId) => {
   const [
-    userDocument,  //for resume
+    userDocument, //for resume
     demographics,
     education,
     experience,
@@ -80,8 +84,7 @@ const getCompletionStatus = async (userId) => {
     certifications: !!certifications,
     awards: !!awards,
     projects: !!projects,
-    "job-domain":
-      !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
     skills: (userDomainSkill?.skills?.length || 0) > 0,
     assessment: !!assessment?.startedAt && !assessment?.completedAt,
     "assessment-results": !!assessment?.completedAt,
@@ -89,9 +92,64 @@ const getCompletionStatus = async (userId) => {
 };
 
 // ================= NAVIGATION =================
+// const calculateNavigation = (status) => {
+//   const currentStep =
+//     STEP_SEQUENCE.find((step) => !status[step]) || "assessment-results";
+
+//   const stepToRoute = {
+//     paywall: "/paywall",
+//     resume: "/upload-resume",
+//     demographics: "/demographics",
+//     education: "/education",
+//     experience: "/experience",
+//     certifications: "/certifications",
+//     awards: "/awards",
+//     projects: "/projects",
+//     "job-domain": "/job-domain",
+//     skills: "/skills",
+//     assessment: "/assessment",
+//     "assessment-results": "/assessment-results",
+//   };
+
+//   let nextRoute = stepToRoute[currentStep];
+
+//   // if (currentStep === "paywall" && status.paywall) {
+//   //   nextRoute = "/job-domain";
+//   // }
+
+//   if (currentStep === "job-domain" && status["job-domain"]) {
+//     nextRoute = "/skills";
+//   }
+
+//   if (currentStep === "skills" && status.skills) {
+//     nextRoute = "/assessment";
+//   }
+
+//   return {
+//     nextRoute,
+//     currentStep,
+//     completedSteps: STEP_SEQUENCE.filter((s) => status[s]),
+//     hasPayment: status.paywall,
+//     isOnboardingComplete:
+//       currentStep === "assessment-results" &&
+//       status["assessment-results"],
+//   };
+// };
+
 const calculateNavigation = (status) => {
-  const currentStep =
-    STEP_SEQUENCE.find((step) => !status[step]) || "assessment-results";
+  // ✅ HARD STOP: onboarding fully completed
+  if (status["assessment-results"]) {
+    return {
+      nextRoute: "/dashboard",
+      currentStep: "completed",
+      completedSteps: STEP_SEQUENCE,
+      hasPayment: status.paywall,
+      isOnboardingComplete: true,
+    };
+  }
+
+  // ✅ Normal onboarding flow
+  const currentStep = STEP_SEQUENCE.find((step) => !status[step]);
 
   const stepToRoute = {
     paywall: "/paywall",
@@ -108,28 +166,12 @@ const calculateNavigation = (status) => {
     "assessment-results": "/assessment-results",
   };
 
-  let nextRoute = stepToRoute[currentStep];
-
-  // if (currentStep === "paywall" && status.paywall) {
-  //   nextRoute = "/job-domain";
-  // }
-
-  if (currentStep === "job-domain" && status["job-domain"]) {
-    nextRoute = "/skills";
-  }
-
-  if (currentStep === "skills" && status.skills) {
-    nextRoute = "/assessment";
-  }
-
   return {
-    nextRoute,
+    nextRoute: stepToRoute[currentStep],
     currentStep,
     completedSteps: STEP_SEQUENCE.filter((s) => status[s]),
     hasPayment: status.paywall,
-    isOnboardingComplete:
-      currentStep === "assessment-results" &&
-      status["assessment-results"],
+    isOnboardingComplete: false,
   };
 };
 
@@ -224,7 +266,6 @@ exports.login = async (req, res) => {
 // GET USER STATUS - Called after saving steps
 // ============================================
 
-
 // ============================================
 // VERIFY ROUTE - Optional security check
 // ============================================
@@ -250,7 +291,26 @@ exports.verifyRouteEndpoint = async (req, res) => {
     const completionStatus = await getCompletionStatus(userId);
     const navigation = calculateNavigation(completionStatus);
 
-    const isAllowed = navigation.nextRoute === requestedRoute;
+    // 🚫 Block onboarding routes once completed
+    if (navigation.isOnboardingComplete) {
+      return res.status(200).json({
+        success: true,
+        allowed: requestedRoute === "/dashboard",
+        nextRoute: "/dashboard",
+        currentStep: "completed",
+      });
+    }
+
+    // const isAllowed = navigation.nextRoute === requestedRoute;
+
+    const currentRoute =
+      navigation.currentStep && navigation.currentStep !== "completed"
+        ? `/${navigation.currentStep}`
+        : null;
+
+    const allowedRoutes = [navigation.nextRoute, currentRoute].filter(Boolean);
+
+    const isAllowed = allowedRoutes.includes(requestedRoute);
 
     res.status(200).json({
       success: true,
@@ -270,6 +330,50 @@ exports.verifyRouteEndpoint = async (req, res) => {
 // ============================================
 // SIGNUP
 // ============================================
+// exports.signup = async (req, res) => {
+//   try {
+//     const { firstname, lastname, email, password, role } = req.body;
+
+//     if (!firstname || !lastname || !email || !password) {
+//       return res.status(400).json({ message: "All fields required" });
+//     }
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(409).json({ message: "Email already registered" });
+//     }
+
+//     const verifyToken = crypto.randomBytes(32).toString("hex");
+
+//     const user = await User.create({
+//       firstname,
+//       lastname,
+//       email,
+//       password,
+//       role: role || "student",
+//       isVerified: false,
+//       emailVerifyToken: verifyToken,
+//       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
+//     });
+
+//     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
+
+//     await sendEmail({
+//       to: email,
+//       subject: "Verify your email address",
+//       html: verifyEmailTemplate({ firstname, verifyUrl }),
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Signup successful. Please verify your email.",
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 exports.signup = async (req, res) => {
   try {
     const { firstname, lastname, email, password, role } = req.body;
@@ -432,22 +536,20 @@ exports.forgotPasswordNew = async (req, res) => {
       success: true,
       message: "OTP sent to email",
     });
-  } 
-  // catch (error) {
-  //   console.error("❌ Forgot password error:", error);
-  //   res.status(500).json({
-  //     success: false,
-  //     message: "Unable to send reset code",
-  //   });
-  // }
-  catch (error) {
-  console.error("❌ EMAIL ERROR:", error.message);
-  res.status(500).json({
-    success: false,
-    message: "Unable to send reset code",
-  });
-}
-
+  } catch (error) {
+    // catch (error) {
+    //   console.error("❌ Forgot password error:", error);
+    //   res.status(500).json({
+    //     success: false,
+    //     message: "Unable to send reset code",
+    //   });
+    // }
+    console.error("❌ EMAIL ERROR:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Unable to send reset code",
+    });
+  }
 };
 
 exports.verifyResetCode = async (req, res) => {
@@ -483,7 +585,6 @@ exports.verifyResetCode = async (req, res) => {
     });
   }
 };
-
 
 exports.resetPasswordNew = async (req, res) => {
   const { email, password } = req.body;
