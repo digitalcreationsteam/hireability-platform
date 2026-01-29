@@ -15,6 +15,9 @@ const resendVerificationEmail = require("../controllers/authController").resendV
 const logout = require("../controllers/authController").logout;
 const getUserStatus = require("../controllers/authController").getUserStatus;
 const verifyRouteEndpoint = require("../controllers/authController").verifyRouteEndpoint;
+const checkEmailVerification = require("../controllers/authController").checkEmailVerification;
+
+
 
 // Import forgot password functions if they exist
 let forgotPasswordNew, verifyResetCode, resetPasswordNew;
@@ -47,6 +50,8 @@ router.post("/resend-verification", resendVerificationEmail);
 /* ✅ NAVIGATION STATUS (Protected routes) */
 router.get("/user-status", auth, getUserStatus);
 router.post("/verify-route", auth, verifyRouteEndpoint);
+router.get("/verification-status", auth, checkEmailVerification);
+
 
 /* ✅ FORGOT PASSWORD (only if functions exist) */
 if (forgotPasswordNew) {
