@@ -323,6 +323,12 @@ router.get(
   authorizeRoles("student"),
   awardController.getAwards
 );
+router.post(
+  "/awards/:id",
+  protect,
+  authorizeRoles("student"),
+  awardController.deleteAward
+);
 
 // =================================================
 // PROJECTS (STUDENT)
@@ -340,6 +346,14 @@ router.get(
   authorizeRoles("student"),
   projectController.getProjects
 );
+
+router.post(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.deleteProject
+);
+
 
 // =================================================
 // RANKING (STUDENT)
@@ -380,6 +394,10 @@ router.get(
   authorizeRoles("student"),
   assessmentController.getLatestResult
 );
+
+
+router.post("/assessment/:attemptId/violation", protect,  authorizeRoles("student"), assessmentController.reportViolation);
+// router.get("/assessment/:attemptId/integrity",protect,  authorizeRoles("student"),  assessmentController.getIntegrity);
 
 // Assessment (STUDENT)
 // =================================================

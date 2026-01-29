@@ -1,8 +1,6 @@
 const Demographics = require("../models/demographicsModel");
 const UserScore = require("../models/userScoreModel");
 
-
-
 exports.saveDemographics = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -64,10 +62,9 @@ exports.saveDemographics = async (req, res) => {
         new: true,
         upsert: true,
         runValidators: true, // ⭐ important
-      }
+      },
     );
 
-    
     await UserScore.findOneAndUpdate(
       { userId },
       {
@@ -78,7 +75,7 @@ exports.saveDemographics = async (req, res) => {
       {
         upsert: true,
         new: true,
-      }
+      },
     );
 
     res.status(200).json({
@@ -104,7 +101,7 @@ exports.saveDemographics = async (req, res) => {
 exports.getDemographicsByUser = async (req, res) => {
   try {
     // Get userId from header
-    const userId = req.headers['user-id']; // or 'userid' based on your header key
+    const userId = req.headers["user-id"]; // or 'userid' based on your header key
 
     if (!userId) {
       return res.status(400).json({ error: "User ID is required in headers" });
@@ -114,22 +111,25 @@ exports.getDemographicsByUser = async (req, res) => {
       userId: userId,
     });
 
-    if (!demographics) {
-      return res.status(404).json({ message: "Demographics not found" });
-    }
+    // if (!demographics) {
+    //   return res.status(404).json({ message: "Demographics not found" });
+    // }
+    return res.status(200).json({
+      success: true,
+      data: demographics || null,
+    });
 
-    res.status(200).json(demographics);
+    // res.status(200).json(demographics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-
 // DELETE (Optional)
 exports.deleteDemographics = async (req, res) => {
   try {
-   const userId = req.headers["user-id"];
-   await Demographics.findOneAndDelete({userId});
+    const userId = req.headers["user-id"];
+    await Demographics.findOneAndDelete({ userId });
     res.json({ message: "Demographics deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });

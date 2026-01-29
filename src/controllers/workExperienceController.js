@@ -43,6 +43,8 @@ const calculateSingleWorkScore = (exp) => {
   return score;
 };
 
+
+
 /* --------------------------------------------------
    TOTAL WORK SCORE (FROM DB RECORDS)
 -------------------------------------------------- */

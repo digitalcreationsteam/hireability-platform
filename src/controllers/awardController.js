@@ -19,9 +19,9 @@ const updateUserAwardScore = async (userId) => {
   await User.findByIdAndUpdate(
     userId,
     { "experienceIndex.awardScore": awardScore },
-    { new: true }
+    { new: true },
   );
- await recalculateUserScore(userId);
+  await recalculateUserScore(userId);
   return awardScore;
 };
 
@@ -35,20 +35,35 @@ exports.createMultipleAwards = async (req, res) => {
       return res.status(400).json({ message: "User ID missing in header" });
     }
 
+    // ✅ ADD HERE
+    const existingCount = await Award.countDocuments({ userId });
+    const incomingCount = Array.isArray(req.body.awards)
+      ? req.body.awards.length
+      : 1;
+    if (existingCount + incomingCount > 5) {
+      return res
+        .status(400)
+        .json({
+          status: false,
+          message: "You can add a maximum of 5 awards only.",
+        });
+    }
+    // ✅ END ADD
+    
     const { awards } = req.body;
 
     if (!Array.isArray(awards) || awards.length === 0) {
       return res.status(400).json({
-        message: "awards must be a non-empty array"
+        message: "awards must be a non-empty array",
       });
     }
 
-    const awardDocs = awards.map(a => ({
+    const awardDocs = awards.map((a) => ({
       userId,
       awardName: a.awardName,
       description: a.description,
       year: a.year,
-      awardScore: 5
+      awardScore: 5,
     }));
 
     const insertedAwards = await Award.insertMany(awardDocs);
@@ -59,17 +74,15 @@ exports.createMultipleAwards = async (req, res) => {
       message: "Awards added successfully",
       totalAdded: insertedAwards.length,
       awardScore: score,
-      data: insertedAwards
+      data: insertedAwards,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error creating awards",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.getAwards = async (req, res) => {
   try {
@@ -79,17 +92,15 @@ exports.getAwards = async (req, res) => {
 
     return res.status(200).json({
       message: "Awards fetched successfully",
-      data: awards
+      data: awards,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching awards",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.getAwardById = async (req, res) => {
   try {
@@ -101,22 +112,20 @@ exports.getAwardById = async (req, res) => {
 
     return res.status(200).json({
       message: "Award fetched",
-      data: award
+      data: award,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error fetching award",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-
 exports.updateAward = async (req, res) => {
   try {
     const award = await Award.findByIdAndUpdate(req.params.id, req.body, {
-      new: true
+      new: true,
     });
 
     if (!award) {
@@ -129,17 +138,15 @@ exports.updateAward = async (req, res) => {
     return res.status(200).json({
       message: "Award updated",
       awardScore: score,
-      data: award
+      data: award,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error updating award",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.deleteAward = async (req, res) => {
   try {
@@ -154,13 +161,12 @@ exports.deleteAward = async (req, res) => {
 
     return res.status(200).json({
       message: "Award deleted",
-      awardScore: score
+      awardScore: score,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Error deleting award",
-      error: error.message
+      error: error.message,
     });
   }
 };
