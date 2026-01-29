@@ -4,7 +4,7 @@ const attemptLimitSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, required: true },
     domainId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    subDomainId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    subDomainId: { type: mongoose.Schema.Types.ObjectId, required: false },
 
     defaultUsed: { type: Boolean, default: false },
     freeRetakeUsed: { type: Boolean, default: false },
