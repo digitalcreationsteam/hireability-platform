@@ -304,15 +304,78 @@ exports.signup = async (req, res) => {
       html: verifyEmailTemplate({ firstname, verifyUrl }),
     });
 
+    // 🔐 CREATE JWT TOKEN
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(201).json({
       success: true,
       message: "Signup successful. Please verify your email.",
+      token,                 // ✅ send token
+      user: {
+        id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        role: user.role,
+      },
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// exports.signup = async (req, res) => {
+//   try {
+//     const { firstname, lastname, email, password, role } = req.body;
+
+//     if (!firstname || !lastname || !email || !password) {
+//       return res.status(400).json({ message: "All fields required" });
+//     }
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(409).json({ message: "Email already registered" });
+//     }
+
+//     const verifyToken = crypto.randomBytes(32).toString("hex");
+
+//     const user = await User.create({
+//       firstname,
+//       lastname,
+//       email,
+//       password,
+//       role: role || "student",
+//       isVerified: false,
+//       emailVerifyToken: verifyToken,
+//       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
+//     });
+
+//     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
+
+//     await sendEmail({
+//       to: email,
+//       subject: "Verify your email address",
+//       html: verifyEmailTemplate({ firstname, verifyUrl }),
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Signup successful. Please verify your email.",
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 // ============================================
 // VERIFY EMAIL
