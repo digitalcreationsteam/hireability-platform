@@ -3,20 +3,17 @@ const UserDomainSkill = require("../../models/userDomainSkillModel");
 // Add and update User Domain & SubDomain
 exports.addUserDomainSubDomain = async (req, res) => {
   try {
-    const { userId, domainId, subDomainId } = req.body;
+    const { userId, domainId } = req.body;
 
-    if (!userId || !domainId || !subDomainId) {
+    if (!userId || !domainId) {
       return res.status(400).json({
-        message: "userId, domainId and subDomainId are required",
+        message: "userId and domainId are required",
       });
     }
 
     const record = await UserDomainSkill.findOneAndUpdate(
       { userId, domainId }, // match condition
       {
-        $set: {
-          subDomainId,
-        },
         $setOnInsert: {
           skills: [], // only when creating new
         },
@@ -28,7 +25,7 @@ exports.addUserDomainSubDomain = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: "Domain & SubDomain saved successfully",
+      message: "Domain saved successfully",
       data: record,
     });
 
@@ -43,23 +40,23 @@ exports.addUserDomainSubDomain = async (req, res) => {
 // Update / Add Skills
 exports.updateUserDomainSkills = async (req, res) => {
   try {
-    const { userId, domainId, subDomainId, skills } = req.body;
+    const { userId, domainId, skills } = req.body;
 
-    if (!userId || !domainId || !subDomainId || !skills) {
+    if (!userId || !domainId || !skills) {
       return res.status(400).json({
-        message: "userId, domainId, subDomainId and skills are required"
+        message: "userId, domainId, and skills are required"
       });
     }
 
     const record = await UserDomainSkill.findOneAndUpdate(
-      { userId, domainId, subDomainId },
+      { userId, domainId, },
       { $set: { skills } },
       { new: true }
     );
 
     if (!record) {
       return res.status(404).json({
-        message: "Domain & SubDomain not found for this user"
+        message: "Domain not found for this user"
       });
     }
 
@@ -83,8 +80,7 @@ exports.getUserDomainSkills = async (req, res) => {
     }
 
     const records = await UserDomainSkill.find({ userId })
-      .populate("domainId", "name")
-      .populate("subDomainId", "name");
+      .populate("domainId", "name");
 
     res.status(200).json(records);
   } catch (err) {

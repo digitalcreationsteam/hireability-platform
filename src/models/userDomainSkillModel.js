@@ -14,12 +14,6 @@ const userDomainSkillSchema = new mongoose.Schema(
       required: true,
     },
 
-    subDomainId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "SubDomain",
-      required: false,
-    },
-
     skills: {
       type: [String],
       default: [],
