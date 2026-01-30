@@ -14,16 +14,23 @@ const userDomainSkillSchema = new mongoose.Schema(
       required: true,
     },
 
+    subDomainId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SubDomain",
+    },
     skills: {
       type: [String],
       default: [],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Prevent duplicate domain per user
-userDomainSkillSchema.index({ userId: 1, domainId: 1 }, { unique: true });
+userDomainSkillSchema.index(
+  { userId: 1, domainId: 1, subDomainId: 1 },
+  { unique: true }
+);
+
 
 module.exports = mongoose.model("UserDomainSkill", userDomainSkillSchema);
-

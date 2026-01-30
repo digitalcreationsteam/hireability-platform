@@ -14,7 +14,7 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
-console.log("Google profile:", profile);
+//console.log("Google profile:", profile);
         let user = await User.findOne({ email });
 
         if (!user) {
@@ -31,7 +31,7 @@ console.log("Google profile:", profile);
 
         const token = generateToken(user._id);
         user.token = token;
-console.log("Google profile:", user);
+//console.log("Google profile:", user);
 
         done(null, user);
       } catch (err) {

@@ -84,7 +84,9 @@ const getCompletionStatus = async (userId) => {
     certifications: !!certifications,
     awards: !!awards,
     projects: !!projects,
-    "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    // "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    "job-domain": !!userDomainSkill?.domainId,
+
     skills: (userDomainSkill?.skills?.length || 0) > 0,
     assessment: !!assessment?.startedAt && !assessment?.completedAt,
     "assessment-results": !!assessment?.completedAt,
@@ -265,6 +267,27 @@ exports.login = async (req, res) => {
 // ============================================
 // GET USER STATUS - Called after saving steps
 // ============================================
+exports.checkEmailVerification = async (req, res) => {
+  try {
+    // req.user is set by auth middleware (JWT)
+    const user = await User.findById(req.user.id).select("isVerified");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      isVerified: user.isVerified,
+    });
+  } catch (err) {
+    console.error("❌ Check verification error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // ============================================
 // VERIFY ROUTE - Optional security check
@@ -400,7 +423,7 @@ exports.signup = async (req, res) => {
       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
     });
 
-    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify/${verifyToken}`;
 
     await sendEmail({
       to: email,
@@ -484,6 +507,8 @@ exports.signup = async (req, res) => {
 // ============================================
 // VERIFY EMAIL
 // ============================================
+
+
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
@@ -549,7 +574,7 @@ exports.resendVerificationEmail = async (req, res) => {
     user.emailVerifyExpire = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verifyToken}`;
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify/${verifyToken}`;
 
     await sendEmail({
       to: email,
