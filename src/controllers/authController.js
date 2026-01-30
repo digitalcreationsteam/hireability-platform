@@ -84,7 +84,9 @@ const getCompletionStatus = async (userId) => {
     certifications: !!certifications,
     awards: !!awards,
     projects: !!projects,
-    "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    // "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
+    "job-domain": !!userDomainSkill?.domainId,
+
     skills: (userDomainSkill?.skills?.length || 0) > 0,
     assessment: !!assessment?.startedAt && !assessment?.completedAt,
     "assessment-results": !!assessment?.completedAt,

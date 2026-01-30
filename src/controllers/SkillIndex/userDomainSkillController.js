@@ -12,15 +12,18 @@ exports.addUserDomainSubDomain = async (req, res) => {
     }
 
     const record = await UserDomainSkill.findOneAndUpdate(
-      { userId, domainId }, // match condition
+      { userId }, // ✅ match ONLY by user
       {
+        $set: {
+          domainId,
+        },
         $setOnInsert: {
-          skills: [], // only when creating new
+          skills: [],
         },
       },
       {
-        new: true,      // return updated doc
-        upsert: true,  // insert if not exists
+        new: true,
+        upsert: true,
       }
     );
 
@@ -28,7 +31,6 @@ exports.addUserDomainSubDomain = async (req, res) => {
       message: "Domain saved successfully",
       data: record,
     });
-
   } catch (err) {
     return res.status(500).json({
       message: "Something went wrong",
@@ -36,6 +38,8 @@ exports.addUserDomainSubDomain = async (req, res) => {
     });
   }
 };
+
+
 
 // Update / Add Skills
 exports.updateUserDomainSkills = async (req, res) => {
@@ -56,7 +60,7 @@ exports.updateUserDomainSkills = async (req, res) => {
 
     if (!record) {
       return res.status(404).json({
-        message: "Domain not found for this user"
+        message: "Domain & SubDomain not found for this user"
       });
     }
 
@@ -80,7 +84,8 @@ exports.getUserDomainSkills = async (req, res) => {
     }
 
     const records = await UserDomainSkill.find({ userId })
-      .populate("domainId", "name");
+      .populate("domainId", "name")
+      // .populate("subDomainId", "name");
 
     res.status(200).json(records);
   } catch (err) {
@@ -112,3 +117,4 @@ exports.deleteUserDomainSkill = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
