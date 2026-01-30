@@ -57,8 +57,9 @@ if (completedTests.length > 0) {
     awardScore +
     projectScore;
 
-  const hireabilityIndex =
-    experienceIndexScore + skillIndexScore;
+ const hireabilityIndex =
+  (0.35 * experienceIndexScore) + (0.65 * skillIndexScore);
+
 
   await UserScore.findOneAndUpdate(
     { userId },

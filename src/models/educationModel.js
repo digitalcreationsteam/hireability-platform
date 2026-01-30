@@ -45,11 +45,18 @@ const EducationSchema = new mongoose.Schema(
       default: false,
     },
 
-    gpa: {
+    cgpa: {
       type: String,
       default: null,
       trim: true,
     },
+
+      gpa: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+
     educationScore: {
           type: Number,
           default: 0
