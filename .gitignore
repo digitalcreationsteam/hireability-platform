@@ -1,5 +1,7 @@
 node_modules
 .env
+.env.text
+
 uploads
 # logs
 # npm-debug.log*
