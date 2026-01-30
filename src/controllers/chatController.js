@@ -1,4 +1,6 @@
 const Chat = require("../models/chatModel");
+const mongoose = require("mongoose");
+
 
 /**
  * GET chat history between current user and other user
