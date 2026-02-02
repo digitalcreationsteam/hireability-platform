@@ -60,7 +60,7 @@ exports.updateUserDomainSkills = async (req, res) => {
 
     if (!record) {
       return res.status(404).json({
-        message: "Domain & SubDomain not found for this user"
+        message: "Domain not found for this user"
       });
     }
 

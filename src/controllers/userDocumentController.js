@@ -14,6 +14,7 @@ exports.uploadOrUpdateResume = async (req, res) => {
     }
 
     const resumeUrl = `${req.protocol}://${req.get("host")}/uploads/${userId}/documents/resume/${req.file.filename}`;
+    const resumeOriginalName = req.file.originalname;
 
     let document = await UserDocument.findOne({ userId });
 
@@ -23,7 +24,10 @@ exports.uploadOrUpdateResume = async (req, res) => {
         __dirname,
         "..",
         "..",
-        document.resumeUrl.replace(req.protocol + "://" + req.get("host") + "/", "")
+        document.resumeUrl.replace(
+          req.protocol + "://" + req.get("host") + "/",
+          "",
+        ),
       );
 
       if (fs.existsSync(oldPath)) {
@@ -34,8 +38,8 @@ exports.uploadOrUpdateResume = async (req, res) => {
     // UPSERT
     document = await UserDocument.findOneAndUpdate(
       { userId },
-      { resumeUrl },
-      { upsert: true, new: true }
+      { resumeUrl, resumeOriginalName },
+      { upsert: true, new: true },
     );
 
     return res.status(200).json({
@@ -71,7 +75,10 @@ exports.uploadOrUpdateProfile = async (req, res) => {
         __dirname,
         "..",
         "..",
-        document.profileUrl.replace(req.protocol + "://" + req.get("host") + "/", "")
+        document.profileUrl.replace(
+          req.protocol + "://" + req.get("host") + "/",
+          "",
+        ),
       );
 
       if (fs.existsSync(oldPath)) {
@@ -83,7 +90,7 @@ exports.uploadOrUpdateProfile = async (req, res) => {
     document = await UserDocument.findOneAndUpdate(
       { userId },
       { profileUrl },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     return res.status(200).json({
@@ -98,4 +105,26 @@ exports.uploadOrUpdateProfile = async (req, res) => {
   }
 };
 
+exports.getUserDocument = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing" });
+    }
 
+    const document = await UserDocument.findOne({ userId });
+
+    return res.status(200).json({
+      message: "User document fetched",
+      data: {
+        resumeUrl: document?.resumeUrl || null,
+        resumeOriginalName: document?.resumeOriginalName || null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching document",
+      error: error.message,
+    });
+  }
+};
