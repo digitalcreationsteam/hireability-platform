@@ -14,12 +14,17 @@ const userDocumentSchema = new mongoose.Schema(
       default: null,
     },
 
+    resumeOriginalName: {
+      type: String,
+      default: null,
+    },
+
     profileUrl: {
       type: String,
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("UserDocument", userDocumentSchema);

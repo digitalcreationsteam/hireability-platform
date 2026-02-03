@@ -1,7 +1,6 @@
 // routes/authRoutes.js - FIXED VERSION
 const express = require("express");
 const router = express.Router(); // Make sure this is Express Router
-
 // Import all your dependencies
 const passport = require("passport");
 const axios = require("axios");
@@ -86,8 +85,10 @@ router.get('/google/callback',
       socialLogin: req.user.socialLogin,
     };
     const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
+    console.log("CLIENT_URL:", process.env.CLIENT_URL);
+    console.log("BACKEND_URL:", process.env.BACKEND_URL);
     res.redirect(
-      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}&user=${userDataBase64}`
+      `${process.env.CLIENT_URL}/login-success?token=${req.user.token}&user=${userDataBase64}`
     );
   }
 );
@@ -134,7 +135,7 @@ router.get("/linkedin/callback", async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/login`);
+      return res.redirect(`${process.env.CLIENT_URL}/login`);
     }
 
     /* Exchange code → access token */
@@ -187,7 +188,7 @@ router.get("/linkedin/callback", async (req, res) => {
     /* No email → ask user to complete profile */
     if (!email) {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/complete-profile?userId=${user._id}`
+        `${process.env.CLIENT_URL}/complete-profile?userId=${user._id}`
       );
     }
 
@@ -212,10 +213,10 @@ router.get("/linkedin/callback", async (req, res) => {
     // Encode user data in base64 for URL
     const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
     
-    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}&user=${userDataBase64}`);
+    res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}&user=${userDataBase64}`);
   } catch (error) {
     console.error("❌ LinkedIn OAuth error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/login`);
+    res.redirect(`${process.env.CLIENT_URL}/login`);
   }
 });
 
