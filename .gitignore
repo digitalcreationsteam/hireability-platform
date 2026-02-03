@@ -1,0 +1,10 @@
+node_modules
+.env
+uploads
+# logs
+# npm-debug.log*
+package-lock.json
+package.json
+src/server.js
+
+src/server copy.js
