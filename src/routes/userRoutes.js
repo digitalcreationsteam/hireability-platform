@@ -307,6 +307,13 @@ router.post(
   userDocumentController.uploadOrUpdateProfile
 );
 
+router.get(
+  "/resume",
+  protect,
+  authorizeRoles("student"),
+  userDocumentController.getUserDocument
+);
+
 // =================================================
 // AWARDS (STUDENT)
 // =================================================
