@@ -86,18 +86,15 @@ router.get('/google/callback',
       socialLogin: req.user.socialLogin,
     };
     const userDataBase64 = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
-    
     res.redirect(
-      `http://localhost:3000/login-success?token=${req.user.token}&user=${userDataBase64}`
+      `https://unitalent.cloud/login-success?token=${req.user.token}&user=${userDataBase64}`
     );
-    
   }
 );
 
 /* =================================================
    🔗 LINKEDIN OAUTH
 ================================================= */
-
 /* Step 1: Redirect to LinkedIn */
 router.get("/linkedin", (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
@@ -108,26 +105,20 @@ router.get("/linkedin", (req, res) => {
     return res.status(500).json({ error: "LinkedIn credentials not configured" });
   }
 
-  if (!redirectUri) {
-    console.error("❌ LINKEDIN_CALLBACK_URL not configured in .env");
-    return res.status(500).json({ error: "Callback URL not configured" });
-  }
-
   //console.log("🔗 LinkedIn OAuth initiated");
   // console.log("📋 Client ID:", process.env.LINKEDIN_CLIENT_ID);
   // console.log("📋 Redirect URI:", redirectUri);
 
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: process.env.LINKEDIN_CLIENT_ID,
+    client_id: "778n7mujuovnck",
     redirect_uri: redirectUri,
     scope: "openid profile email",
     state,
   });
 
   const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
-  console.log("🔗 Redirecting to:", linkedInAuthUrl);
-  
+ // console.log("🔗 Redirecting to:", linkedInAuthUrl);
   res.redirect(linkedInAuthUrl);
 });
 
@@ -136,7 +127,7 @@ router.get("/linkedin/callback", async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL}/login`);
+      return res.redirect(`${process.env.CLIENT_URL}/login`);
     }
 
     /* Exchange code → access token */
@@ -161,35 +152,42 @@ router.get("/linkedin/callback", async (req, res) => {
     );
 
     const { given_name, family_name, email, sub } = profileRes.data;
-p
-    console.log("👉 LinkedIn Profile - Sub:", sub, "Email:", email);
+
+    //console.log("👉 LinkedIn Profile - Sub:", sub, "Email:", email);
 
     /* Find or create user */
     let user = await User.findOne({ linkedinId: sub });
 
-    if (!user) {
-      const tempPassword = crypto.randomBytes(32).toString("hex");
+// 1️⃣ If not found by linkedinId, try email
+if (!user && email) {
+  user = await User.findOne({ email });
 
-      user = await User.create({
-        firstname: given_name || "LinkedIn",
-        lastname: family_name || "User",
-        email: email || `linkedin_${sub}_${Date.now()}@temp.local`,
-        password: tempPassword,
-        role: "student",
-        socialLogin: "linkedin",
-        linkedinId: sub,
-        isVerified: !!email,
-      });
+  // If user exists by email → link LinkedIn
+  if (user) {
+    user.linkedinId = sub;
+    user.socialLogin = "linkedin";
+    await user.save();
+  }
+}
 
-      console.log("✅ LinkedIn user created:", user._id);
-    } else {
-      console.log("ℹ️ LinkedIn user found:", user._id);
-    }
-
+// 2️⃣ If still no user → create new
+if (!user) {
+  user = await User.create({
+    firstname: given_name || "LinkedIn",
+    lastname: family_name || "User",
+    email: email || `linkedin_${sub}_${Date.now()}@temp.local`,
+    password: crypto.randomBytes(32).toString("hex"),
+    role: "student",
+    socialLogin: "linkedin",
+    linkedinId: sub,
+    isVerified: !!email,
+  });
+}
+    
     /* No email → ask user to complete profile */
     if (!email) {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/complete-profile?userId=${user._id}`
+        `${process.env.CLIENT_URL}/complete-profile?userId=${user._id}`
       );
     }
 
@@ -201,7 +199,6 @@ p
     
     // Prepare user data with token
     const userData = {
-      token,
       id: user._id,
       email: user.email,
       firstname: user.firstname,
@@ -212,12 +209,12 @@ p
     };
     
     // Encode user data in base64 for URL
-    const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
+    const userDataBase64 = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
     
-    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}&user=${userDataBase64}`);
+    res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}&user=${userDataBase64}`);
   } catch (error) {
     console.error("❌ LinkedIn OAuth error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/login`);
+    res.redirect(`${process.env.CLIENT_URL}/login`);
   }
 });
 
