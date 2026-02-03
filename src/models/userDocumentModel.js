@@ -13,18 +13,16 @@ const userDocumentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-
     resumeOriginalName: {
       type: String,
       default: null,
     },
-
     profileUrl: {
       type: String,
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("UserDocument", userDocumentSchema);

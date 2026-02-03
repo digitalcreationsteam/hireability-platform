@@ -314,6 +314,7 @@ router.get(
   userDocumentController.getUserDocument
 );
 
+
 // =================================================
 // AWARDS (STUDENT)
 // =================================================
@@ -403,7 +404,7 @@ router.get(
 );
 
 
-router.post("/assessment/violation/:attemptId", protect,  authorizeRoles("student"), assessmentController.reportViolation);
+router.post("/assessment/:attemptId/violation", protect, authorizeRoles("student"), assessmentController.reportViolation);
 // router.get("/assessment/:attemptId/integrity",protect,  authorizeRoles("student"),  assessmentController.getIntegrity);
 
 // Assessment (STUDENT)
