@@ -75,11 +75,14 @@ connectDB().then(() => {
   app.use("/api/auth", require("./routes/authRoutes"));
   app.use("/api/user", require("./routes/userRoutes"));
   app.use("/api/subscription", require("./routes/subscriptionRoutes"));
+  app.use("/api/admin", require("./routes/adminRoutes"));
+  app.use("/api/recruiter", require("./routes/recruiterRoutes"));
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
   });
-
+// console.log("CLIENT_URL:", process.env.CLIENT_URL);
+// console.log("BACKEND_URL:", process.env.BACKEND_URL);
   /* =======================
      Server
   ======================= */
