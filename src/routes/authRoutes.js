@@ -85,10 +85,12 @@ router.get('/google/callback',
       isVerified: req.user.isVerified,
       socialLogin: req.user.socialLogin,
     };
-    const userDataBase64 = Buffer.from(JSON.stringify(userData)).toString('base64');
+    const userDataBase64 = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
+    
     res.redirect(
-      `${process.env.FRONTEND_URL}/login-success?token=${req.user.token}&user=${userDataBase64}`
+      `http://localhost:3000/login-success?token=${req.user.token}&user=${userDataBase64}`
     );
+    
   }
 );
 
@@ -159,7 +161,7 @@ router.get("/linkedin/callback", async (req, res) => {
     );
 
     const { given_name, family_name, email, sub } = profileRes.data;
-
+p
     console.log("👉 LinkedIn Profile - Sub:", sub, "Email:", email);
 
     /* Find or create user */
