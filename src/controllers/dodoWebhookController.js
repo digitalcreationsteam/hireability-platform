@@ -1,78 +1,129 @@
 const Subscription = require("../models/subscriptionModel");
 const crypto = require("crypto");
+const User = require("../models/userModel");
+const generateInvoicePdf = require("../utils/generateInvoicePdf");
+const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
+    // ✅ Parse raw buffer
+    const payload = JSON.parse(req.body.toString("utf8"));
+
     const {
       orderId,
       paymentId,
-      signature,
+      amount,
+      currency,
       status,
-    } = req.body;
+      signature,
+    } = payload;
 
-    // Verify signature (MANDATORY)
-    const isValid = verifyDodoSignature(req.body);
+    // ✅ Verify signature using RAW payload
+    const isValid = verifyDodoSignature(payload);
     if (!isValid) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature",
+      });
     }
 
-    const subscription = await Subscription.findOne({ dodoOrderId: orderId });
+    const subscription = await Subscription.findOne({
+      dodoOrderId: orderId,
+    });
+
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
     }
 
-    if (subscription.status === "active") {
-      return res.json({ success: true, message: "Already processed" });
+    // ✅ Idempotency protection
+    if (subscription.dodoPaymentId === paymentId) {
+      return res.json({ success: true });
     }
 
     if (status === "SUCCESS") {
-      const now = new Date();
-      let endDate = null;
+      const start = new Date();
+      const end = new Date(start);
 
       if (subscription.billingPeriod === "monthly") {
-        endDate = new Date(now.setMonth(now.getMonth() + 1));
+        end.setMonth(end.getMonth() + 1);
       } else if (subscription.billingPeriod === "yearly") {
-        endDate = new Date(now.setFullYear(now.getFullYear() + 1));
+        end.setFullYear(end.getFullYear() + 1);
       }
 
       subscription.status = "active";
-      subscription.currentPeriodStart = new Date();
-      subscription.currentPeriodEnd = endDate;
+      subscription.paymentStatus = "success";
+      subscription.currentPeriodStart = start;
+      subscription.currentPeriodEnd =
+        subscription.billingPeriod === "lifetime" ? null : end;
+
       subscription.dodoPaymentId = paymentId;
       subscription.dodoSignature = signature;
 
       subscription.invoices.push({
         invoiceId: paymentId,
-        amount: subscription.amount,
-        currency: subscription.currency,
+        amount,
+        currency,
         status: "paid",
         paid: true,
         createdAt: new Date(),
       });
-
-      await subscription.save();
     } else {
-      subscription.status = "canceled";
-      await subscription.save();
+      subscription.paymentStatus = "failed";
+      subscription.status = "past_due";
     }
+
+    await subscription.save();
+    const user = await User.findById(subscription.user);
+
+    const invoiceId = `INV_${Date.now()}`;
+
+    const invoicePath = generateInvoicePdf({
+      invoiceId,
+      studentName: user.name,
+      email: user.email,
+      planName: subscription.planName,
+      amount,
+      currency,
+      billingPeriod: subscription.billingPeriod,
+      paymentId,
+    });
+
+    await sendInvoiceEmail({
+      to: user.email,
+      studentName: user.name,
+      invoicePath,
+    });
 
     return res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("DODO WEBHOOK ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 
 
-
 function verifyDodoSignature(payload) {
-  const secret = process.env.DODO_SECRET_KEY;
+  const secret = process.env.DODO_WEBHOOK_SECRET;
+
+  const data = [
+    payload.orderId,
+    payload.paymentId,
+    payload.amount,
+    payload.currency,
+    payload.status,
+  ].join("|");
 
   const generatedSignature = crypto
     .createHmac("sha256", secret)
-    .update(payload.orderId + payload.paymentId)
+    .update(data)
     .digest("hex");
 
   return generatedSignature === payload.signature;
 }
-

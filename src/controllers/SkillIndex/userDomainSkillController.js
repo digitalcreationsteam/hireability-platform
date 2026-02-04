@@ -60,7 +60,7 @@ exports.updateUserDomainSkills = async (req, res) => {
 
     if (!record) {
       return res.status(404).json({
-        message: "Domain not found for this user"
+        message: "Domain & SubDomain not found for this user"
       });
     }
 
@@ -85,7 +85,7 @@ exports.getUserDomainSkills = async (req, res) => {
 
     const records = await UserDomainSkill.find({ userId })
       .populate("domainId", "name")
-      // .populate("subDomainId", "name");
+    // .populate("subDomainId", "name");
 
     res.status(200).json(records);
   } catch (err) {

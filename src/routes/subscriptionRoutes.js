@@ -11,6 +11,9 @@ const {
   cancelSubscription,
   getCurrentSubscription,
 } = require("../controllers/subscriptionController");
+const paymentController = require("../controllers/paymentController");
+const invoiceController = require("../controllers/invoiceController");
+
 
 const router = express.Router();
 
@@ -28,6 +31,9 @@ router.post(
   authorizeRoles("student"),
   createSubscription
 );
+
+router.post("/payments/dodo/initiate", protect, paymentController.initiateDodoPayment);
+router.get("/invoice/:invoiceId", protect, invoiceController.downloadInvoice);
 
 // Verify payment
 router.post(

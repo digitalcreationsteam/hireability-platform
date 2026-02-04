@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // // models/subscriptionModel.js - FIXED VERSION
 
 // const mongoose = require("mongoose");
@@ -131,6 +132,8 @@
 // module.exports = Subscription;
 
 
+=======
+>>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
 const mongoose = require("mongoose");
 
 const subscriptionSchema = new mongoose.Schema(
@@ -159,6 +162,14 @@ const subscriptionSchema = new mongoose.Schema(
       default: "pending",
       index: true,
     },
+<<<<<<< HEAD
+=======
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "success", "failed"],
+      default: "pending",
+    },
+>>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
 
     // Billing period
     billingPeriod: {
@@ -212,7 +223,16 @@ const subscriptionSchema = new mongoose.Schema(
     },
 
     // 🔥 DODO FIELDS
+<<<<<<< HEAD
     dodoOrderId: String,
+=======
+    dodoOrderId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+>>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
     dodoPaymentId: String,
     dodoSignature: String,
 

@@ -256,6 +256,7 @@ exports.getAllPlans = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 // ✅ CREATE SUBSCRIPTION (ACTIVE IMMEDIATELY)
 // exports.createSubscription = async (req, res) => {
 //   try {
@@ -385,10 +386,123 @@ exports.createSubscription = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+=======
+
+
+// controllers/subscriptionController.js
+exports.createSubscription = async (req, res) => {
+  const { planId } = req.body;
+  const userId = req.user._id;
+
+  const plan = await SubscriptionPlan.findById(planId);
+  if (!plan) {
+    return res.status(404).json({ success: false, message: "Plan not found" });
+>>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
   }
+
+  await Subscription.updateMany(
+    { user: userId, status: { $in: ["active", "pending"] } },
+    { status: "canceled", canceledAt: new Date() }
+  );
+
+  const dodoOrderId = `DODO_SUB_${Date.now()}`;
+
+  const subscription = await Subscription.create({
+    user: userId,
+    plan: plan._id,
+    planName: plan.name,
+    billingPeriod: plan.billingPeriod,
+    paymentMethod: "dodo",
+    amount: plan.price,
+    currency: plan.currency,
+    status: "pending",
+    dodoOrderId,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      subscriptionId: subscription._id,
+    },
+  });
 };
 
 
+<<<<<<< HEAD
+=======
+// ✅ CREATE SUBSCRIPTION (ACTIVE IMMEDIATELY)
+// exports.createSubscription = async (req, res) => {
+//   try {
+//     const { planId, paymentMethod = "razorpay" } = req.body;
+//     const userId = req.user._id;
+
+//     if (!planId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Plan ID is required",
+//       });
+//     }
+
+//     const plan = await SubscriptionPlan.findById(planId);
+//     if (!plan) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Plan not found",
+//       });
+//     }
+
+//     // Cancel old subscriptions
+//     await Subscription.updateMany(
+//       { user: userId, status: { $in: ["active", "pending"] } },
+//       { status: "canceled" }
+//     );
+
+//     const orderId = `order_${Date.now()}`;
+
+//     const now = new Date();
+//     const currentPeriodStart = now;
+//     const currentPeriodEnd = new Date(now);
+
+//     if (plan.billingPeriod === "monthly") {
+//       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+//     } else if (plan.billingPeriod === "yearly") {
+//       currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+//     } else if (plan.billingPeriod === "quarterly") {
+//       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 3);
+//     }
+
+//     // 🔥 IMPORTANT FIX → status = "active"
+//     const subscription = await Subscription.create({
+//       user: userId,
+//       plan: planId,
+//       planName: plan.name,
+//       amount: plan.price,
+//       currency: plan.currency,
+//       status: "active", // ✅ FIXED
+//       paymentMethod,
+//       billingPeriod: plan.billingPeriod,
+//       currentPeriodStart,
+//       currentPeriodEnd,
+//       razorpayOrderId: orderId,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Subscription created successfully",
+//       data: {
+//         subscriptionId: subscription._id,
+//         status: subscription.status,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("❌ createSubscription error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to create subscription",
+//     });
+//   }
+// };
+>>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
 // Verify payment (dummy implementation)
 exports.verifyPayment = async (req, res) => {
   try {

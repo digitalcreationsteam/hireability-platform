@@ -24,10 +24,7 @@ exports.uploadOrUpdateResume = async (req, res) => {
         __dirname,
         "..",
         "..",
-        document.resumeUrl.replace(
-          req.protocol + "://" + req.get("host") + "/",
-          "",
-        ),
+        document.resumeUrl.replace(req.protocol + "://" + req.get("host") + "/", "")
       );
 
       if (fs.existsSync(oldPath)) {
@@ -39,7 +36,7 @@ exports.uploadOrUpdateResume = async (req, res) => {
     document = await UserDocument.findOneAndUpdate(
       { userId },
       { resumeUrl, resumeOriginalName },
-      { upsert: true, new: true },
+      { upsert: true, new: true }
     );
 
     return res.status(200).json({
@@ -75,10 +72,7 @@ exports.uploadOrUpdateProfile = async (req, res) => {
         __dirname,
         "..",
         "..",
-        document.profileUrl.replace(
-          req.protocol + "://" + req.get("host") + "/",
-          "",
-        ),
+        document.profileUrl.replace(req.protocol + "://" + req.get("host") + "/", "")
       );
 
       if (fs.existsSync(oldPath)) {
@@ -90,7 +84,7 @@ exports.uploadOrUpdateProfile = async (req, res) => {
     document = await UserDocument.findOneAndUpdate(
       { userId },
       { profileUrl },
-      { upsert: true, new: true },
+      { upsert: true, new: true }
     );
 
     return res.status(200).json({
