@@ -77,13 +77,7 @@ connectDB().then(() => {
   app.use("/api/subscription", require("./routes/subscriptionRoutes"));
   app.use("/api/admin", require("./routes/adminRoutes"));
   app.use("/api/recruiter", require("./routes/recruiterRoutes"));
-<<<<<<< HEAD
-  app.use("/api/cases", require("./routes/caseRoutes"));
-  app.use("/api/admin/cases", require("./routes/adminCaseRoutes"));
-
-=======
   app.use("/api/webhooks", require("./routes/webhookRoutes"));
->>>>>>> 238ee920ae11a18cff178be656ead8afc5d8b391
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
