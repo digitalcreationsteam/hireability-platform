@@ -87,7 +87,7 @@ router.get('/google/callback',
     };
     const userDataBase64 = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
     res.redirect(
-      `https://unitalent.cloud/login-success?token=${req.user.token}&user=${userDataBase64}`
+      `${process.env.CLIENT_URL}/login-success?token=${req.user.token}&user=${userDataBase64}`
     );
   }
 );

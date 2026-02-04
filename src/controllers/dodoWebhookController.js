@@ -3,33 +3,41 @@ const crypto = require("crypto");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
-    // const {
-    //   orderId,
-    //   paymentId,
-    //   signature,
-    //   status,
-    // } = req.body;
-const {
-  orderId,
-  paymentId,
-  amount,
-  currency,
-  status,
-  signature,
-} = req.body;
-    // Verify signature (MANDATORY)
-    const isValid = verifyDodoSignature(req.body);
+    // ✅ Parse raw buffer
+    const payload = JSON.parse(req.body.toString("utf8"));
+
+    const {
+      orderId,
+      paymentId,
+      amount,
+      currency,
+      status,
+      signature,
+    } = payload;
+
+    // ✅ Verify signature using RAW payload
+    const isValid = verifyDodoSignature(payload);
     if (!isValid) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature",
+      });
     }
 
-    const subscription = await Subscription.findOne({ dodoOrderId: orderId });
+    const subscription = await Subscription.findOne({
+      dodoOrderId: orderId,
+    });
+
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
     }
 
-    if (subscription.status === "active") {
-      return res.json({ success: true, message: "Already processed" });
+    // ✅ Idempotency protection
+    if (subscription.dodoPaymentId === paymentId) {
+      return res.json({ success: true });
     }
 
     if (status === "SUCCESS") {
@@ -64,13 +72,16 @@ const {
       subscription.status = "past_due";
     }
 
-
+    await subscription.save(); 
     return res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("DODO WEBHOOK ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-
 
 
 
@@ -92,5 +103,3 @@ function verifyDodoSignature(payload) {
 
   return generatedSignature === payload.signature;
 }
-
-
