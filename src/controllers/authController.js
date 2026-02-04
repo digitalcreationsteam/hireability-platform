@@ -281,6 +281,7 @@ exports.checkEmailVerification = async (req, res) => {
 
     res.json({
       success: true,
+      userId:user.id,
       isVerified: user.isVerified,
     });
   } catch (err) {
