@@ -6,7 +6,6 @@ const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
-    // ✅ Parse raw buffer
     const payload = JSON.parse(req.body.toString("utf8"));
 
     const {
@@ -18,19 +17,16 @@ exports.handleDodoWebhook = async (req, res) => {
       signature,
     } = payload;
 
-    // ✅ Verify signature using RAW payload
-    const isValid = verifyDodoSignature(payload);
-    if (!isValid) {
+    // 1️⃣ Verify signature
+    if (!verifyDodoSignature(payload)) {
       return res.status(400).json({
         success: false,
         message: "Invalid signature",
       });
     }
 
-    const subscription = await Subscription.findOne({
-      dodoOrderId: orderId,
-    });
-
+    // 2️⃣ Load subscription
+    const subscription = await Subscription.findOne({ dodoOrderId: orderId });
     if (!subscription) {
       return res.status(404).json({
         success: false,
@@ -38,50 +34,68 @@ exports.handleDodoWebhook = async (req, res) => {
       });
     }
 
-    // ✅ Idempotency protection
+    // 3️⃣ Idempotency
     if (subscription.dodoPaymentId === paymentId) {
       return res.json({ success: true });
     }
 
-    if (status === "SUCCESS") {
-      const start = new Date();
-      const end = new Date(start);
-
-      if (subscription.billingPeriod === "monthly") {
-        end.setMonth(end.getMonth() + 1);
-      } else if (subscription.billingPeriod === "yearly") {
-        end.setFullYear(end.getFullYear() + 1);
-      }
-
-      subscription.status = "active";
-      subscription.paymentStatus = "success";
-      subscription.currentPeriodStart = start;
-      subscription.currentPeriodEnd =
-        subscription.billingPeriod === "lifetime" ? null : end;
-
-      subscription.dodoPaymentId = paymentId;
-      subscription.dodoSignature = signature;
-
-      subscription.invoices.push({
-        invoiceId: paymentId,
-        amount,
-        currency,
-        status: "paid",
-        paid: true,
-        createdAt: new Date(),
+    // 4️⃣ Validate amount & currency
+    if (
+      Number(amount) !== Number(subscription.amount) ||
+      currency !== subscription.currency
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount or currency mismatch",
       });
-    } else {
-      subscription.paymentStatus = "failed";
-      subscription.status = "past_due";
     }
 
+    // ❌ PAYMENT FAILED
+    if (status !== "SUCCESS") {
+      subscription.paymentStatus = "failed";
+      subscription.status = "past_due";
+      await subscription.save();
+
+      return res.json({ success: true });
+    }
+
+    // ✅ PAYMENT SUCCESS
+    const start = new Date();
+    let end = null;
+
+    if (subscription.billingPeriod === "monthly") {
+      end = new Date(start);
+      end.setMonth(end.getMonth() + 1);
+    } else if (subscription.billingPeriod === "yearly") {
+      end = new Date(start);
+      end.setFullYear(end.getFullYear() + 1);
+    }
+
+    subscription.status = "active";
+    subscription.paymentStatus = "success";
+    subscription.currentPeriodStart = start;
+    subscription.currentPeriodEnd =
+      subscription.billingPeriod === "oneTime" ? null : end;
+
+    subscription.dodoPaymentId = paymentId;
+    subscription.dodoSignature = signature;
+
+    subscription.invoices.push({
+      invoiceId: paymentId,
+      amount,
+      currency,
+      status: "paid",
+      paid: true,
+      createdAt: new Date(),
+    });
+
     await subscription.save();
+
+    // 5️⃣ Generate invoice & send email
     const user = await User.findById(subscription.user);
 
-    const invoiceId = `INV_${Date.now()}`;
-
     const invoicePath = generateInvoicePdf({
-      invoiceId,
+      invoiceId: `INV_${Date.now()}`,
       studentName: user.name,
       email: user.email,
       planName: subscription.planName,
@@ -102,13 +116,12 @@ exports.handleDodoWebhook = async (req, res) => {
     console.error("DODO WEBHOOK ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Webhook processing failed",
     });
   }
 };
 
-
-
+// 🔐 Signature verification
 function verifyDodoSignature(payload) {
   const secret = process.env.DODO_WEBHOOK_SECRET;
 

@@ -28,40 +28,56 @@ exports.getAllPlans = async (req, res) => {
 
 // controllers/subscriptionController.js
 exports.createSubscription = async (req, res) => {
-  const { planId } = req.body;
-  const userId = req.user._id;
+  try {
+    const { planProductId } = req.body; // ✅ renamed
+    const userId = req.user._id;
 
-  const plan = await SubscriptionPlan.findById(planId);
-  if (!plan) {
-    return res.status(404).json({ success: false, message: "Plan not found" });
+    // 1️⃣ Fetch product-based plan
+    const plan = await SubscriptionPlan.findById(planProductId);
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription product not found",
+      });
+    }
+
+    // 2️⃣ Cancel ONLY active subscriptions
+    await Subscription.updateMany(
+      { user: userId, status: "active" },
+      { status: "canceled", canceledAt: new Date() }
+    );
+
+    // 3️⃣ Create order ID
+    const dodoOrderId = `DODO_SUB_${Date.now()}`;
+
+    // 4️⃣ Create subscription
+    const subscription = await Subscription.create({
+      user: userId,
+      plan: plan._id,              // product reference
+      planName: plan.planName,     // "Basic"
+      billingPeriod: plan.billingPeriod,
+      paymentMethod: "dodo",
+      amount: plan.price,
+      currency: plan.currency,
+      status: "pending",
+      dodoOrderId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        subscriptionId: subscription._id,
+        paymentLink: plan.dodo.paymentLink, // ✅ use stored link
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
-
-  await Subscription.updateMany(
-    { user: userId, status: { $in: ["active", "pending"] } },
-    { status: "canceled", canceledAt: new Date() }
-  );
-
-  const dodoOrderId = `DODO_SUB_${Date.now()}`;
-
-  const subscription = await Subscription.create({
-    user: userId,
-    plan: plan._id,
-    planName: plan.name,
-    billingPeriod: plan.billingPeriod,
-    paymentMethod: "dodo",
-    amount: plan.price,
-    currency: plan.currency,
-    status: "pending",
-    dodoOrderId,
-  });
-
-  res.status(201).json({
-    success: true,
-    data: {
-      subscriptionId: subscription._id,
-    },
-  });
 };
+
 
 
 // ✅ CREATE SUBSCRIPTION (ACTIVE IMMEDIATELY)

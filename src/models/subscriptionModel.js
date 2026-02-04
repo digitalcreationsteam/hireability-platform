@@ -19,7 +19,11 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
+    planProduct: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SubscriptionPlan",
+      required: true,
+    },
     status: {
       type: String,
       enum: ["pending", "active", "canceled", "expired", "past_due"],
@@ -35,7 +39,7 @@ const subscriptionSchema = new mongoose.Schema(
     // Billing period
     billingPeriod: {
       type: String,
-      enum: ["monthly", "yearly", "lifetime"],
+      enum: ["monthly", "yearly", "oneTime"],
       required: true,
     },
 
@@ -46,7 +50,7 @@ const subscriptionSchema = new mongoose.Schema(
 
     currentPeriodEnd: {
       type: Date,
-      default: null, // null = lifetime
+      default: null, // null = oneTime
       index: true,
     },
 
