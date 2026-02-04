@@ -12,6 +12,8 @@ const {
   getCurrentSubscription,
 } = require("../controllers/subscriptionController");
 const paymentController = require("../controllers/paymentController");
+const invoiceController = require("../controllers/invoiceController");
+
 
 const router = express.Router();
 
@@ -31,7 +33,7 @@ router.post(
 );
 
 router.post("/payments/dodo/initiate", protect, paymentController.initiateDodoPayment);
-
+router.get("/invoice/:invoiceId", protect, invoiceController.downloadInvoice);
 
 // Verify payment
 router.post(

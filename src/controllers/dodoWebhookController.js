@@ -1,5 +1,8 @@
 const Subscription = require("../models/subscriptionModel");
 const crypto = require("crypto");
+const User = require("../models/userModel");
+const generateInvoicePdf = require("../utils/generateInvoicePdf");
+const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
@@ -72,7 +75,28 @@ exports.handleDodoWebhook = async (req, res) => {
       subscription.status = "past_due";
     }
 
-    await subscription.save(); 
+    await subscription.save();
+    const user = await User.findById(subscription.user);
+
+    const invoiceId = `INV_${Date.now()}`;
+
+    const invoicePath = generateInvoicePdf({
+      invoiceId,
+      studentName: user.name,
+      email: user.email,
+      planName: subscription.planName,
+      amount,
+      currency,
+      billingPeriod: subscription.billingPeriod,
+      paymentId,
+    });
+
+    await sendInvoiceEmail({
+      to: user.email,
+      studentName: user.name,
+      invoicePath,
+    });
+
     return res.json({ success: true });
   } catch (error) {
     console.error("DODO WEBHOOK ERROR:", error);
