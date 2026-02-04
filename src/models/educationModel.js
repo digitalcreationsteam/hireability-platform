@@ -36,8 +36,8 @@ const EducationSchema = new mongoose.Schema(
     },
 
     duration: {
-        type: Number, 
-        required: true,
+      type: Number,
+      required: true,
     },
 
     currentlyStudying: {
@@ -45,22 +45,15 @@ const EducationSchema = new mongoose.Schema(
       default: false,
     },
 
-    cgpa: {
+    gpa: {
       type: String,
       default: null,
       trim: true,
     },
-
-      gpa: {
-      type: String,
-      default: null,
-      trim: true,
-    },
-
     educationScore: {
-          type: Number,
-          default: 0
-        },
+      type: Number,
+      default: 0
+    },
     // To store image/logo if needed (optional)
     schoolImage: {
       type: String,

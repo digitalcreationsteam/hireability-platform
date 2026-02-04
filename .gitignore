@@ -1,5 +1,18 @@
 node_modules
 .env
+.env.text
+
+uploads
+# logs
+# npm-debug.log*
+package-lock.json
+package.json
+src/server.js
+
+src/server copy.js
+
+node_modules
+.env
 uploads
 # logs
 # npm-debug.log*
