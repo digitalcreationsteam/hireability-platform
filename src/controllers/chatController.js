@@ -1,31 +1,33 @@
 const Chat = require("../models/chatModel");
 const mongoose = require("mongoose");
 
-
-/**
- * GET chat history between current user and other user
- */
-exports.markMessagesAsRead = async (req, res) => {
+exports.getChatHistory = async (req, res) => {
   try {
-    const userId = req.user?._id || req.userId;
-    const { senderId, receiverId } = req.body;
-    
+    const myId = req.user?.id || req.user?._id;
+    const { otherUserId } = req.params;
+
+    if (!myId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!otherUserId) return res.status(400).json({ success: false, message: "otherUserId required" });
+
     const chat = await Chat.findOne({
-      participants: { $all: [senderId, receiverId] }
+      participants: {
+        $all: [
+          new mongoose.Types.ObjectId(myId),
+          new mongoose.Types.ObjectId(otherUserId),
+        ],
+      },
+    }).lean();
+
+    const messages = (chat?.messages || []).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: messages,
     });
-    
-    if (chat) {
-      chat.messages.forEach(msg => {
-        if (msg.senderId === senderId && msg.receiverId === receiverId) {
-          msg.read = true;
-        }
-      });
-      
-      await chat.save();
-    }
-    
-    res.status(200).json({ success: true });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to mark messages as read" });
+  } catch (err) {
+    console.error("getChatHistory error:", err);
+    return res.status(500).json({ success: false, message: "Failed to get chat history" });
   }
 };
