@@ -1,4 +1,5 @@
 const User = require("../../models/userModel");
+const userScoreModel = require("../../models/userScoreModel");
 
 // ===============================
 // ADMIN DASHBOARD
@@ -121,5 +122,73 @@ exports.getPlatformStats = async (req, res) => {
     res.json({ success: true, stats });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Ranking Controller
+exports.getUserScoreByUserId = async (req, res) => {
+ try {
+    let { rankType, page = 1, limit = 10 } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    // Validate rankType
+    const validRanks = ["global", "country", "state", "city", "all"];
+    if (!rankType || !validRanks.includes(rankType)) {
+      rankType = "all"; // default to all ranks
+    }
+
+    // Pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch students with pagination
+    const students = await userScoreModel.find()
+      .populate("userId", "name email") // include user info
+      .skip(skip)
+      .limit(limit)
+      .lean(); // lean returns plain JS objects for easier manipulation
+
+    // Map ranks based on filter
+    const filteredStudents = students.map((student) => {
+      const rankData = {};
+      if (rankType === "all") {
+        rankData.globalRank = student.globalRank;
+        rankData.countryRank = student.countryRank;
+        rankData.stateRank = student.stateRank;
+        rankData.cityRank = student.cityRank;
+      } else if (rankType === "global") {
+        rankData.globalRank = student.globalRank;
+      } else if (rankType === "country") {
+        rankData.countryRank = student.countryRank;
+      } else if (rankType === "state") {
+        rankData.stateRank = student.stateRank;
+      } else if (rankType === "city") {
+        rankData.cityRank = student.cityRank;
+      }
+
+      return {
+        userId: student.userId,
+        rank: rankData
+      };
+    });
+
+    // Total count for pagination
+    const total = await userScoreModel.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      totalStudents: total,
+      students: filteredStudents
+    });
+  } catch (error) {
+    console.error("Error fetching student ranks:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };

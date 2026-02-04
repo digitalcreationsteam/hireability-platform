@@ -6,6 +6,7 @@ const { authorizeRoles } = require("../middlewares/roleMiddleware");
 
 const adminController = require("../controllers/Admin/adminController");
 
+
 // =================================================
 // 🔐 ADMIN DASHBOARD
 // =================================================
@@ -56,5 +57,12 @@ router.get(
   authorizeRoles("admin"),
   adminController.getPlatformStats
 );
+
+// Ranking
+router.get(
+  "/user-score/ranks",
+  protect, 
+  authorizeRoles("admin"), 
+  adminController.getUserScoreByUserId);
 
 module.exports = router;
