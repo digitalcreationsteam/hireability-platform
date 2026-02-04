@@ -4,8 +4,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
       enum: ["Free", "Basic", "Premium", "Enterprise"],
+      required: true,
       unique: true,
     },
 
@@ -28,8 +28,13 @@ const subscriptionPlanSchema = new mongoose.Schema(
 
     billingPeriod: {
       type: String,
-      enum: ["monthly", "yearly", "lifetime"],
+      enum: ["monthly", "yearly", "lifetime"], // lifetime = one-time
       default: "monthly",
+    },
+
+    trialPeriod: {
+      type: Number, // in days
+      default: 0,
     },
 
     isActive: {
@@ -38,9 +43,16 @@ const subscriptionPlanSchema = new mongoose.Schema(
       index: true,
     },
 
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+
+    // Limits
     maxAssessments: {
       type: Number,
-      default: 0, // 999999 = unlimited
+      default: 0, // 0 = unlimited
     },
 
     maxCandidates: {
@@ -48,28 +60,20 @@ const subscriptionPlanSchema = new mongoose.Schema(
       default: 0,
     },
 
-    skillIndexAccess: Boolean,
-    advancedAnalytics: Boolean,
-    prioritySupport: Boolean,
-    customBranding: Boolean,
-    apiAccess: Boolean,
-
-    trialPeriod: {
-      type: Number,
-      default: 0,
-    },
-
-    order: {
-      type: Number,
-      default: 0,
-      index: true,
-    },
+    // Feature flags
+    skillIndexAccess: { type: Boolean, default: false },
+    advancedAnalytics: { type: Boolean, default: false },
+    prioritySupport: { type: Boolean, default: false },
+    customBranding: { type: Boolean, default: false },
+    apiAccess: { type: Boolean, default: false },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 subscriptionPlanSchema.index({ isActive: 1, order: 1 });
 
-// module.exports = mongoose.model("SubscriptionPlan", subscriptionPlanSchema);
-
-module.exports = mongoose.model("SubscriptionPlan", subscriptionPlanSchema, "subscriptionPlan",);
+module.exports = mongoose.model(
+  "SubscriptionPlan",
+  subscriptionPlanSchema,
+  "subscriptionPlan"
+);
