@@ -6,6 +6,12 @@ const caseQuestionSchema = new mongoose.Schema({
     ref: "CaseStudy",
     required: true
   },
+  caseCode: {
+  type: String,
+  required: true,
+  uppercase: true,
+  trim: true
+},
   order: {
     type: Number,
     required: true
