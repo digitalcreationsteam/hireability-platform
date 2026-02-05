@@ -12,7 +12,6 @@ exports.getAllCases = async (req, res) => {
     const cases = await CaseStudy.find({ isActive: true })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select("title description");
 
     res.status(200).json({
       success: true,

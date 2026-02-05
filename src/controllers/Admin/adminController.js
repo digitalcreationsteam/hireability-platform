@@ -192,3 +192,48 @@ exports.getUserScoreByUserId = async (req, res) => {
     });
   }
 };
+
+// get student count
+exports.getStudentCount = async (req, res) => {
+  try {
+    const studentCount = await User.countDocuments({ role: "student" });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        students: studentCount,
+      },
+    });
+  } catch (error) {
+    console.error("Student Count Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// get recruiter count
+// @desc    Get recruiter count
+// @route   GET /api/admin/recruiter-count
+// @access  Admin
+exports.getRecruiterCount = async (req, res) => {
+  try {
+    const recruiterCount = await User.countDocuments({ role: "recruiter" });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        recruiters: recruiterCount,
+      },
+    });
+  } catch (error) {
+    console.error("Recruiter Count Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
