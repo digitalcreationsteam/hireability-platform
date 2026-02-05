@@ -6,6 +6,17 @@ const caseOpeningSchema = new mongoose.Schema({
     ref: "CaseStudy",
     required: true
   },
+  caseCode: {
+        type: String,
+        required: true,
+        uppercase: true,
+        trim: true
+    },
+  caseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CaseStudy",
+        required: true
+    },
   openingText: {
     type: String,
     required: true

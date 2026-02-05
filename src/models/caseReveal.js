@@ -6,6 +6,12 @@ const caseRevealSchema = new mongoose.Schema({
     ref: "CaseStudy",
     required: true
   },
+  caseCode: {
+  type: String,
+  required: true,
+  uppercase: true,
+  trim: true
+},
   realCompanyName: String,
   fullStory: String,
   decisionBreakdown: [
