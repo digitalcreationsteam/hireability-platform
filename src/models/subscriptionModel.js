@@ -19,11 +19,11 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    planProduct: {
+    /*planProduct: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubscriptionPlan",
       required: true,
-    },
+    },*/
     status: {
       type: String,
       enum: ["pending", "active", "canceled", "expired", "past_due"],
@@ -88,6 +88,10 @@ const subscriptionSchema = new mongoose.Schema(
     },
 
     // 🔥 DODO FIELDS
+    productId: {
+      type: String,
+      required: true,
+    },
     dodoOrderId: {
       type: String,
       unique: true,
@@ -124,7 +128,7 @@ const subscriptionSchema = new mongoose.Schema(
 
 // -------------------- INDEXES --------------------
 subscriptionSchema.index({ user: 1, status: 1 });
-subscriptionSchema.index({ dodoOrderId: 1 });
+//subscriptionSchema.index({ dodoOrderId: 1 });
 
 // -------------------- VIRTUALS --------------------
 subscriptionSchema.virtual("isActive").get(function () {

@@ -10,9 +10,13 @@ const {
   getSubscriptionDetails,
   cancelSubscription,
   getCurrentSubscription,
+  checkSubscriptionStatus,
+  markSubscriptionAsPaid,
+  dodoRedirectHelper,
 } = require("../controllers/subscriptionController");
-const paymentController = require("../controllers/paymentController");
-const invoiceController = require("../controllers/invoiceController");
+const { initiateDodoPayment } = require("../controllers/paymentController");
+const { downloadInvoice } = require("../controllers/invoiceController");
+
 
 
 const router = express.Router();
@@ -32,8 +36,8 @@ router.post(
   createSubscription
 );
 
-router.post("/payments/dodo/initiate", protect, paymentController.initiateDodoPayment);
-router.get("/invoice/:invoiceId", protect, invoiceController.downloadInvoice);
+router.post("/payments/dodo/initiate", protect, initiateDodoPayment);
+router.get("/invoice/:invoiceId", protect, downloadInvoice);
 
 // Verify payment
 router.post(
@@ -58,6 +62,15 @@ router.get(
   authorizeRoles("student"),
   getCurrentSubscription
 );
+
+// Check subscription status by ID (for PaymentSuccess page - no auth required)
+router.get("/status/:subscriptionId", checkSubscriptionStatus);
+
+// Mark subscription as paid (TEST MODE - for DODO test checkout without webhooks)
+router.post("/mark-paid", markSubscriptionAsPaid);
+
+// Redirect helper from DODO (sends HTML redirect to frontend)
+router.get("/redirect/dodo", dodoRedirectHelper);
 
 // Cancel subscription
 router.delete(
