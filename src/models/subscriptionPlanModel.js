@@ -79,9 +79,17 @@ const mongoose = require("mongoose");
 
 const subscriptionPlanSchema = new mongoose.Schema(
   {
-    name: {
+    // Logical grouping
+    planName: {
       type: String,
       enum: ["Free", "Basic", "Premium", "Enterprise"],
+      required: true,
+      index: true,
+    },
+
+    // Product identity (DODO-style)
+    productName: {
+      type: String, // e.g. "Basic USD"
       required: true,
       unique: true,
     },
@@ -91,27 +99,22 @@ const subscriptionPlanSchema = new mongoose.Schema(
       required: true,
     },
 
+    billingPeriod: {
+      type: String,
+      enum: ["monthly", "yearly", "oneTime"],
+      required: true,
+    },
+
     price: {
       type: Number,
       required: true,
-      min: 0,
     },
 
     currency: {
       type: String,
-      enum: ["USD", "EUR", "GBP", "INR"],
-      default: "USD",
-    },
-
-    billingPeriod: {
-      type: String,
-      enum: ["monthly", "yearly", "lifetime"], // lifetime = one-time
-      default: "monthly",
-    },
-
-    trialPeriod: {
-      type: Number, // in days
-      default: 0,
+      enum: ["USD", "INR", "EUR", "GBP"],
+      required: true,
+      index: true,
     },
 
     isActive: {
@@ -123,21 +126,37 @@ const subscriptionPlanSchema = new mongoose.Schema(
     order: {
       type: Number,
       default: 0,
-      index: true,
     },
 
-    // Limits
-    maxAssessments: {
-      type: Number,
-      default: 0, // 0 = unlimited
+    // ===============================
+    // 🔥 DODO PRODUCT DATA
+    // ===============================
+    dodo: {
+      mode: {
+        type: String,
+        enum: ["test", "live"],
+        required: true,
+      },
+      productId: {
+        type: String,
+        required: true,
+        unique: true,
+      },
+      paymentLink: {
+        type: String,
+        required: true,
+      },
     },
 
-    maxCandidates: {
-      type: Number,
-      default: 0,
-    },
+    // ===============================
+    // LIMITS
+    // ===============================
+    maxAssessments: { type: Number, default: 0 },
+    maxCandidates: { type: Number, default: 0 },
 
-    // Feature flags
+    // ===============================
+    // FEATURES
+    // ===============================
     skillIndexAccess: { type: Boolean, default: false },
     advancedAnalytics: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false },
@@ -147,7 +166,16 @@ const subscriptionPlanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-subscriptionPlanSchema.index({ isActive: 1, order: 1 });
+// subscriptionPlanSchema.index({
+//   planName: 1,
+//   currency: 1,
+//   billingPeriod: 1,
+// });
+
+subscriptionPlanSchema.index(
+  { planName: 1, currency: 1, billingPeriod: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model(
   "SubscriptionPlan",
