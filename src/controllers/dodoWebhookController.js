@@ -6,19 +6,26 @@ const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
-    const payload = req.body; // ✅ FIX
+    // Support raw body (express.raw) or parsed JSON
+    let payload = req.body;
+    if (Buffer.isBuffer(req.body)) {
+      try {
+        payload = JSON.parse(req.body.toString());
+      } catch (err) {
+        console.error("DODO WEBHOOK: invalid JSON body", err);
+        return res.status(400).json({ success: false });
+      }
+    }
 
-    const {
-      orderId,
-      paymentId,
-      amount,
-      currency,
-      status,
-      signature,
-    } = payload;
+    // ✅ ADD THIS
+    console.log("📥 DODO WEBHOOK RECEIVED:", payload);
+
+    const { orderId, paymentId, amount, currency, status, signature } =
+      payload || {};
 
     // 1️⃣ Verify signature
     if (!verifyDodoSignature(payload)) {
+      console.error("DODO WEBHOOK: signature mismatch", { payload });
       return res.status(400).json({ success: false });
     }
 
@@ -29,7 +36,7 @@ exports.handleDodoWebhook = async (req, res) => {
     }
 
     // 3️⃣ Idempotency
-    if (subscription.dodoPaymentId === paymentId) {
+    if ( subscription.paymentStatus === "success" && subscription.dodoPaymentId === paymentId) {
       return res.json({ success: true });
     }
 
@@ -45,6 +52,7 @@ exports.handleDodoWebhook = async (req, res) => {
     if (status !== "SUCCESS") {
       subscription.paymentStatus = "failed";
       subscription.status = "past_due";
+      subscription.failureReason = status; // ✅ optional but useful
       await subscription.save();
       return res.json({ success: true });
     }

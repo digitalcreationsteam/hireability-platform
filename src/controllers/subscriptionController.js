@@ -74,58 +74,7 @@ exports.getAllPlans = async (req, res) => {
   }
 };
 
-// Verify payment
-exports.verifyPayment = async (req, res) => {
-  try {
-    const { subscriptionId, paymentId } = req.body;
 
-    if (!subscriptionId || !paymentId) {
-      return res.status(400).json({
-        success: false,
-        message: "subscriptionId and paymentId are required",
-      });
-    }
-
-    const subscription = await Subscription.findById(subscriptionId);
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    // Update subscription status
-    subscription.status = "active";
-    subscription.paymentStatus = "success";
-    subscription.dodoPaymentId = paymentId;
-    subscription.currentPeriodStart = new Date();
-
-    // Set period end based on billing period
-    if (subscription.billingPeriod === "monthly") {
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1);
-      subscription.currentPeriodEnd = endDate;
-    } else if (subscription.billingPeriod === "yearly") {
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
-      subscription.currentPeriodEnd = endDate;
-    }
-
-    await subscription.save();
-
-    res.json({
-      success: true,
-      message: "Payment verified successfully",
-      data: subscription,
-    });
-  } catch (error) {
-    console.error("VERIFY PAYMENT ERROR:", error);
-    res.status(500).json({
-      success: false,
-      message: "Unable to verify payment",
-    });
-  }
-};
 
 // Check subscription status by ID (for PaymentSuccess page)
 exports.checkSubscriptionStatus = async (req, res) => {
@@ -167,61 +116,7 @@ exports.checkSubscriptionStatus = async (req, res) => {
   }
 };
 
-// Mark subscription as paid (for DODO test mode - no webhook support)
-exports.markSubscriptionAsPaid = async (req, res) => {
-  try {
-    const { subscriptionId } = req.body;
 
-    if (!subscriptionId) {
-      return res.status(400).json({
-        success: false,
-        message: "subscriptionId is required",
-      });
-    }
-
-    const subscription = await Subscription.findById(subscriptionId);
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    // Mark subscription as paid
-    subscription.status = "active";
-    subscription.paymentStatus = "success";
-    subscription.currentPeriodStart = new Date();
-
-    // Set period end based on billing period
-    if (subscription.billingPeriod === "monthly") {
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1);
-      subscription.currentPeriodEnd = endDate;
-    } else if (subscription.billingPeriod === "yearly") {
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
-      subscription.currentPeriodEnd = endDate;
-    }
-
-    await subscription.save();
-
-    res.json({
-      success: true,
-      message: "Subscription marked as paid",
-      data: {
-        subscriptionId: subscription._id,
-        status: subscription.status,
-        paymentStatus: subscription.paymentStatus,
-      },
-    });
-  } catch (error) {
-    console.error("MARK SUBSCRIPTION AS PAID ERROR:", error);
-    res.status(500).json({
-      success: false,
-      message: "Unable to mark subscription as paid",
-    });
-  }
-};
 
 // Redirect helper for DODO (sends HTML that redirects to frontend)
 exports.dodoRedirectHelper = async (req, res) => {
@@ -231,6 +126,7 @@ exports.dodoRedirectHelper = async (req, res) => {
     if (!subscriptionId) {
       return res.status(400).send("Missing subscriptionId");
     }
+    
 
     // Send an HTML page that redirects to frontend PaymentSuccess
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
