@@ -135,16 +135,14 @@ const subscriptionPlanSchema = new mongoose.Schema(
       mode: {
         type: String,
         enum: ["test", "live"],
-        required: true,
+        default: "test",
       },
       productId: {
         type: String,
-        required: true,
-        unique: true,
+        sparse: true,
       },
       paymentLink: {
         type: String,
-        required: true,
       },
     },
 

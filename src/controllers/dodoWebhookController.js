@@ -6,7 +6,7 @@ const sendInvoiceEmail = require("../utils/sendInvoiceEmail");
 
 exports.handleDodoWebhook = async (req, res) => {
   try {
-    const payload = JSON.parse(req.body.toString("utf8"));
+    const payload = req.body; // ✅ FIX
 
     const {
       orderId,
@@ -19,19 +19,13 @@ exports.handleDodoWebhook = async (req, res) => {
 
     // 1️⃣ Verify signature
     if (!verifyDodoSignature(payload)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid signature",
-      });
+      return res.status(400).json({ success: false });
     }
 
     // 2️⃣ Load subscription
     const subscription = await Subscription.findOne({ dodoOrderId: orderId });
     if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
+      return res.status(404).json({ success: false });
     }
 
     // 3️⃣ Idempotency
@@ -39,27 +33,23 @@ exports.handleDodoWebhook = async (req, res) => {
       return res.json({ success: true });
     }
 
-    // 4️⃣ Validate amount & currency
+    // 4️⃣ Validate payment
     if (
       Number(amount) !== Number(subscription.amount) ||
       currency !== subscription.currency
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount or currency mismatch",
-      });
+      return res.status(400).json({ success: false });
     }
 
-    // ❌ PAYMENT FAILED
+    // ❌ Payment failed
     if (status !== "SUCCESS") {
       subscription.paymentStatus = "failed";
       subscription.status = "past_due";
       await subscription.save();
-
       return res.json({ success: true });
     }
 
-    // ✅ PAYMENT SUCCESS
+    // ✅ Payment success
     const start = new Date();
     let end = null;
 
@@ -74,9 +64,7 @@ exports.handleDodoWebhook = async (req, res) => {
     subscription.status = "active";
     subscription.paymentStatus = "success";
     subscription.currentPeriodStart = start;
-    subscription.currentPeriodEnd =
-      subscription.billingPeriod === "oneTime" ? null : end;
-
+    subscription.currentPeriodEnd = end;
     subscription.dodoPaymentId = paymentId;
     subscription.dodoSignature = signature;
 
@@ -91,10 +79,10 @@ exports.handleDodoWebhook = async (req, res) => {
 
     await subscription.save();
 
-    // 5️⃣ Generate invoice & send email
+    // 5️⃣ Invoice + Email
     const user = await User.findById(subscription.user);
 
-    const invoicePath = generateInvoicePdf({
+    const invoicePath = await generateInvoicePdf({
       invoiceId: `INV_${Date.now()}`,
       studentName: user.name,
       email: user.email,
@@ -114,14 +102,10 @@ exports.handleDodoWebhook = async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error("DODO WEBHOOK ERROR:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Webhook processing failed",
-    });
+    return res.status(500).json({ success: false });
   }
 };
 
-// 🔐 Signature verification
 function verifyDodoSignature(payload) {
   const secret = process.env.DODO_WEBHOOK_SECRET;
 
@@ -133,10 +117,10 @@ function verifyDodoSignature(payload) {
     payload.status,
   ].join("|");
 
-  const generatedSignature = crypto
+  const signature = crypto
     .createHmac("sha256", secret)
     .update(data)
     .digest("hex");
 
-  return generatedSignature === payload.signature;
+  return signature === payload.signature;
 }
