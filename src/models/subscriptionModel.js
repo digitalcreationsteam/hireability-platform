@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const subscriptionSchema = new mongoose.Schema(
   {
+    // -------------------- CORE RELATIONS --------------------
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -9,34 +10,34 @@ const subscriptionSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Link to SubscriptionPlan (single source of truth)
     plan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubscriptionPlan",
       required: true,
     },
 
+    // Snapshot of plan name (for history / analytics)
     planName: {
       type: String,
       required: true,
     },
-    /*planProduct: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "SubscriptionPlan",
-      required: true,
-    },*/
+
+    // -------------------- STATUS --------------------
     status: {
       type: String,
       enum: ["pending", "active", "canceled", "expired", "past_due"],
       default: "pending",
       index: true,
     },
+
     paymentStatus: {
       type: String,
       enum: ["pending", "success", "failed"],
       default: "pending",
     },
 
-    // Billing period
+    // -------------------- BILLING --------------------
     billingPeriod: {
       type: String,
       enum: ["monthly", "yearly", "oneTime"],
@@ -50,7 +51,7 @@ const subscriptionSchema = new mongoose.Schema(
 
     currentPeriodEnd: {
       type: Date,
-      default: null, // null = oneTime
+      default: null, // null for oneTime plans
       index: true,
     },
 
@@ -59,18 +60,25 @@ const subscriptionSchema = new mongoose.Schema(
       default: false,
     },
 
-    canceledAt: Date,
+    canceledAt: {
+      type: Date,
+    },
 
-    // Trial
+    // -------------------- TRIAL --------------------
     isTrial: {
       type: Boolean,
       default: false,
     },
 
-    trialStart: Date,
-    trialEnd: Date,
+    trialStart: {
+      type: Date,
+    },
 
-    // Payment
+    trialEnd: {
+      type: Date,
+    },
+
+    // -------------------- PAYMENT --------------------
     paymentMethod: {
       type: String,
       enum: ["dodo", "razorpay", "stripe", "paypal", "free"],
@@ -84,24 +92,29 @@ const subscriptionSchema = new mongoose.Schema(
 
     currency: {
       type: String,
-      default: "USD",
+      default: "INR",
     },
 
-    // 🔥 DODO FIELDS
-    productId: {
-      type: String,
-      required: true,
-    },
+    // -------------------- DODO (PAYMENT INSTANCE DATA ONLY) --------------------
+    // ❌ DO NOT store dodoProductId / dodoPaymentLink here
+    // ✅ Those belong to SubscriptionPlan
+
     dodoOrderId: {
       type: String,
       unique: true,
       sparse: true,
       index: true,
     },
-    dodoPaymentId: String,
-    dodoSignature: String,
 
-    // Invoices
+    dodoPaymentId: {
+      type: String,
+    },
+
+    dodoSignature: {
+      type: String,
+    },
+
+    // -------------------- INVOICES --------------------
     invoices: [
       {
         invoiceId: String,
@@ -113,6 +126,7 @@ const subscriptionSchema = new mongoose.Schema(
       },
     ],
 
+    // -------------------- METADATA --------------------
     metadata: {
       type: Map,
       of: String,
@@ -128,7 +142,6 @@ const subscriptionSchema = new mongoose.Schema(
 
 // -------------------- INDEXES --------------------
 subscriptionSchema.index({ user: 1, status: 1 });
-//subscriptionSchema.index({ dodoOrderId: 1 });
 
 // -------------------- VIRTUALS --------------------
 subscriptionSchema.virtual("isActive").get(function () {

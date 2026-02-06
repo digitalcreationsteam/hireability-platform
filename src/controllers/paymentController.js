@@ -45,6 +45,7 @@ exports.initiateDodoPayment = async (req, res) => {
       planName: plan.planName,
       amount: subscription.amount,
       subscriptionId: subscriptionId,
+      dodoProductId: plan,
     });
 
     // 3️⃣ Get Dodo payment checkout link from environment (INR only)
