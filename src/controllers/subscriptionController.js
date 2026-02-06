@@ -1,12 +1,15 @@
 const Subscription = require("../models/subscriptionModel");
 const SubscriptionPlan = require("../models/subscriptionPlanModel");
 const crypto = require("crypto");
+const DODO_BASE_URL = "https://test.dodopayments.com/api";
+// For live later:
+// const DODO_BASE_URL = "https://api.dodopayments.com";
+
 
 exports.createSubscription = async (req, res) => {
   try {
     const { planId } = req.body;
 
-    // Validate inputs
     if (!planId) {
       return res.status(400).json({
         success: false,
@@ -14,7 +17,6 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    // 1️⃣ Load plan
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
       return res.status(404).json({
@@ -23,10 +25,10 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    // 2️⃣ Create unique orderId
-    const orderId = `ORD_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const orderId = `ORD_${Date.now()}_${crypto
+      .randomBytes(4)
+      .toString("hex")}`;
 
-    // 3️⃣ Create subscription (INR only for now)
     const subscription = await Subscription.create({
       user: req.user._id,
       plan: plan._id,
@@ -41,13 +43,35 @@ exports.createSubscription = async (req, res) => {
       dodoOrderId: orderId,
     });
 
-    return res.json({
-      success: true,
-      data: {
-        subscriptionId: subscription._id,
-        orderId: orderId,
-      },
-    });
+    const paymentResponse = await axios.post(
+  `${DODO_BASE_URL}/payments`,
+  {
+    amount: plan.price,
+    currency: "INR",
+    order_id: orderId,
+
+    success_url: `${process.env.BACKEND_URL}/api/subscriptions/dodo/redirect?subscriptionId=${subscription._id}`,
+    failure_url: `${process.env.BACKEND_URL}/api/subscriptions/dodo/redirect?subscriptionId=${subscription._id}`,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${process.env.DODO_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+  }
+);
+
+const checkoutUrl = paymentResponse.data.checkout_url;
+
+  return res.json({
+  success: true,
+  data: {
+    subscriptionId: subscription._id,
+    checkoutUrl,
+  },
+});
+
+    
   } catch (error) {
     console.error("CREATE SUB ERROR:", error);
     res.status(500).json({
@@ -126,7 +150,7 @@ exports.dodoRedirectHelper = async (req, res) => {
     if (!subscriptionId) {
       return res.status(400).send("Missing subscriptionId");
     }
-    
+     
 
     // Send an HTML page that redirects to frontend PaymentSuccess
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
