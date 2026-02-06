@@ -6,13 +6,11 @@ const { authorizeRoles } = require("../middlewares/roleMiddleware");
 const {
   getAllPlans,
   createSubscription,
-  verifyPayment,
   getSubscriptionDetails,
   cancelSubscription,
   getCurrentSubscription,
   checkSubscriptionStatus,
-  markSubscriptionAsPaid,
-  dodoRedirectHelper,
+  dodoRedirectHelper, // ✅ ADD THIS
 } = require("../controllers/subscriptionController");
 const { initiateDodoPayment } = require("../controllers/paymentController");
 const { downloadInvoice } = require("../controllers/invoiceController");
@@ -37,15 +35,15 @@ router.post(
 );
 
 router.post("/payments/dodo/initiate", protect, initiateDodoPayment);
+
+
+// routes/subscriptionRoutes.js
+router.get("/dodo/redirect", dodoRedirectHelper);
+
+// Download invoice
 router.get("/invoice/:invoiceId", protect, downloadInvoice);
 
-// Verify payment
-router.post(
-  "/verify",
-  protect,
-  authorizeRoles("student"),
-  verifyPayment
-);
+
 
 // Get all subscriptions for user
 router.get(
@@ -65,12 +63,7 @@ router.get(
 
 // Check subscription status by ID (for PaymentSuccess page - no auth required)
 router.get("/status/:subscriptionId", checkSubscriptionStatus);
-
-// Mark subscription as paid (TEST MODE - for DODO test checkout without webhooks)
-router.post("/mark-paid", markSubscriptionAsPaid);
-
-// Redirect helper from DODO (sends HTML redirect to frontend)
-router.get("/redirect/dodo", dodoRedirectHelper);
+// Note: test-only routes (mark-paid, redirect) removed in cleanup
 
 // Cancel subscription
 router.delete(
