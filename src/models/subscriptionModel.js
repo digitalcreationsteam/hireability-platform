@@ -101,7 +101,7 @@ const subscriptionSchema = new mongoose.Schema(
     }, 
     dodoPaymentId: {
       type: String,
-      required: false,
+      index: true,
     },
     dodoSignature: {
       type: String,

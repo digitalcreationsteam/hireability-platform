@@ -1,5 +1,6 @@
 const Subscription = require("../models/subscriptionModel");
 const { Webhook } = require("svix");
+const mongoose = require("mongoose");
 
 exports.handleDodoWebhook = async (req, res) => {
   console.log("📥 DODO WEBHOOK HIT");
@@ -25,19 +26,46 @@ exports.handleDodoWebhook = async (req, res) => {
 
     const data = event.data;
 
-    // ✅ SAFE EXTRACTION
+    // 🔐 Extract identifiers
+    const subscriptionId =
+      data.subscription_id ||
+      data.metadata?.subscription_id ||
+      data.passthrough?.subscription_id;
+
     const orderId =
       data.order_id ||
       data.metadata?.order_id ||
       data.passthrough?.order_id;
 
-    if (!orderId) {
-      console.error("❌ orderId missing in webhook payload");
-      return res.status(200).send("OK"); // avoid retries
+    const paymentId = data.payment_id;
+
+    console.log("📦 Webhook identifiers:", {
+      subscriptionId,
+      orderId,
+      paymentId,
+    });
+
+    // ❌ Nothing to match against
+    if (!subscriptionId && !orderId) {
+      console.error("❌ No subscriptionId or orderId in webhook");
+      return res.status(200).send("OK");
+    }
+
+    // Build safe query
+    const query = {
+      $or: [],
+    };
+
+    if (subscriptionId && mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      query.$or.push({ _id: subscriptionId });
+    }
+
+    if (orderId) {
+      query.$or.push({ dodoOrderId: orderId });
     }
 
     // -------------------------
-    // Common invoice object
+    // Invoice entry
     // -------------------------
     const invoiceEntry = {
       invoiceId: data.invoice_id || null,
@@ -54,12 +82,12 @@ exports.handleDodoWebhook = async (req, res) => {
     // -------------------------
     if (event.type === "payment.succeeded") {
       const subscription = await Subscription.findOneAndUpdate(
-        { dodoOrderId: orderId },
+        query,
         {
           status: "active",
           paymentStatus: "success",
           currentPeriodStart: new Date(),
-          dodoPaymentId: data.payment_id, // ✅ STORED
+          dodoPaymentId: paymentId,
           $push: { invoices: invoiceEntry },
         },
         { new: true }
@@ -73,16 +101,16 @@ exports.handleDodoWebhook = async (req, res) => {
     // -------------------------
     if (event.type === "payment.failed") {
       await Subscription.findOneAndUpdate(
-        { dodoOrderId: orderId },
+        query,
         {
           status: "past_due",
           paymentStatus: "failed",
-          dodoPaymentId: data.payment_id || null,
+          dodoPaymentId: paymentId || null,
           $push: { invoices: invoiceEntry },
         }
       );
 
-      console.log("❌ Payment failed for:", orderId);
+      console.log("❌ Payment failed for:", subscriptionId || orderId);
     }
 
     return res.status(200).send("OK");
