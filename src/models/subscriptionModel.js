@@ -105,6 +105,7 @@ const subscriptionSchema = new mongoose.Schema(
     invoices: [
       {
         invoiceId: String,
+        invoiceURL:String,
         amount: Number,
         currency: String,
         status: String,
