@@ -24,7 +24,17 @@ exports.handleDodoWebhook = async (req, res) => {
     console.log("✅ Webhook verified:", event.type);
 
     const data = event.data;
-    const orderId = data.order_id;
+
+    // ✅ SAFE EXTRACTION
+    const orderId =
+      data.order_id ||
+      data.metadata?.order_id ||
+      data.passthrough?.order_id;
+
+    if (!orderId) {
+      console.error("❌ orderId missing in webhook payload");
+      return res.status(200).send("OK"); // avoid retries
+    }
 
     // -------------------------
     // Common invoice object
@@ -43,25 +53,26 @@ exports.handleDodoWebhook = async (req, res) => {
     // ✅ PAYMENT SUCCESS
     // -------------------------
     if (event.type === "payment.succeeded") {
-      await Subscription.updateOne(
+      const subscription = await Subscription.findOneAndUpdate(
         { dodoOrderId: orderId },
         {
           status: "active",
           paymentStatus: "success",
           currentPeriodStart: new Date(),
-          dodoPaymentId: data.payment_id,
+          dodoPaymentId: data.payment_id, // ✅ STORED
           $push: { invoices: invoiceEntry },
-        }
+        },
+        { new: true }
       );
 
-      console.log("💰 Subscription activated:", orderId);
+      console.log("💰 Subscription activated:", subscription?._id);
     }
 
     // -------------------------
     // ❌ PAYMENT FAILED
     // -------------------------
     if (event.type === "payment.failed") {
-      await Subscription.updateOne(
+      await Subscription.findOneAndUpdate(
         { dodoOrderId: orderId },
         {
           status: "past_due",

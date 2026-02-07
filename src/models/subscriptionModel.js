@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { fillAndStroke } = require("pdfkit");
 
 const subscriptionSchema = new mongoose.Schema(
   {
@@ -98,9 +99,14 @@ const subscriptionSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     }, 
-    dodoPaymentId: String,
-    dodoSignature: String,
-
+    dodoPaymentId: {
+      type: String,
+      required: false,
+    },
+    dodoSignature: {
+      type: String,
+      required: false,
+    },
     // Invoices
     invoices: [
       {
