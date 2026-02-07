@@ -11,6 +11,7 @@ const {
   getCurrentSubscription,
   checkSubscriptionStatus,
   dodoRedirectHelper, // ✅ ADD THIS
+  getSubscriptionById
 } = require("../controllers/subscriptionController");
 const { initiateDodoPayment } = require("../controllers/paymentController");
 const { downloadInvoice } = require("../controllers/invoiceController");
@@ -33,7 +34,7 @@ router.post(
   authorizeRoles("student"),
   createSubscription
 );
-
+router.get("/:id", protect, authorizeRoles("student"), getSubscriptionById);
 router.post("/payments/dodo/initiate", protect, initiateDodoPayment);
 
 

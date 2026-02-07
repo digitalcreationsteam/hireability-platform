@@ -1,10 +1,9 @@
 const Subscription = require("../models/subscriptionModel");
 const SubscriptionPlan = require("../models/subscriptionPlanModel");
 
-/**
- * Initiate Dodo Payment - Returns checkout link to real Dodo payment gateway
- * Uses pre-configured Dodo payment links from .env for each plan/currency
- */
+// Add this line
+const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
+
 exports.initiateDodoPayment = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
@@ -16,7 +15,6 @@ exports.initiateDodoPayment = async (req, res) => {
       });
     }
 
-    // 1️⃣ Load subscription
     const subscription = await Subscription.findById(subscriptionId);
     if (!subscription) {
       return res.status(404).json({
@@ -32,7 +30,6 @@ exports.initiateDodoPayment = async (req, res) => {
       });
     }
 
-    // 2️⃣ Load plan
     const plan = await SubscriptionPlan.findById(subscription.plan);
     if (!plan) {
       return res.status(404).json({
@@ -45,43 +42,38 @@ exports.initiateDodoPayment = async (req, res) => {
       planName: plan.planName,
       amount: subscription.amount,
       subscriptionId: subscriptionId,
-      dodoProductId: plan,
+      mode: DODO_MODE,
     });
 
-    // 3️⃣ Get Dodo payment checkout link from environment (INR only)
-    // Format: PLANNAME_INR_PAY (e.g., BASIC_INR_PAY, PREMIUM__INR_PAY)
-    let paymentLinkEnvKey = `${plan.planName.toUpperCase()}_INR_PAY`;
+    const dodoConfig = plan.dodo?.[DODO_MODE];
 
-    // Handle special case for PREMIUM__INR (with double underscore in env)
-    if (plan.planName.toUpperCase() === "PREMIUM") {
-      paymentLinkEnvKey = "PREMIUM__INR_PAY";
-    }
-
-    let paymentUrl = process.env[paymentLinkEnvKey];
-
-    if (!paymentUrl) {
+    if (!dodoConfig || !dodoConfig.paymentLink) {
       console.error(
-        `❌ No Dodo payment link found for ${paymentLinkEnvKey}. Available env keys: BASIC_INR_PAY, PREMIUM__INR_PAY`
+        `❌ No Dodo payment link found for ${plan.planName} in ${DODO_MODE} mode`
       );
       return res.status(400).json({
         success: false,
-        message: `Payment link not configured for ${plan.planName}`,
+        message: `Payment link not configured for ${plan.planName} in ${DODO_MODE} mode`,
       });
     }
 
-    console.log(`✅ Using Dodo payment link: ${paymentLinkEnvKey}`);
+    const paymentUrl = dodoConfig.paymentLink;
 
-    // Append subscriptionId to the URL so our redirect helper can pass it to frontend
-    const urlWithSubId = `${paymentUrl}${paymentUrl.includes('?') ? '&' : '?'}subscriptionId=${subscriptionId}`;
+    // Append metadata to the URL
+    const urlWithMetadata = `${paymentUrl}${
+      paymentUrl.includes("?") ? "&" : "?"
+    }order_id=${subscription.dodoOrderId}&subscription_id=${subscriptionId}`;
 
-    console.log("📤 Payment URL with subscriptionId:", urlWithSubId);
+    console.log(
+      `✅ Using Dodo payment link for ${DODO_MODE} mode:`,
+      urlWithMetadata
+    );
 
-    // Return Dodo payment URL
     return res.json({
       success: true,
-      paymentUrl: urlWithSubId,
-      mode: "dodo",
-      message: "Redirecting to Dodo payment gateway",
+      paymentUrl: urlWithMetadata,
+      mode: DODO_MODE,
+      message: `Redirecting to Dodo payment gateway (${DODO_MODE})`,
     });
   } catch (error) {
     console.error("❌ PAYMENT INIT ERROR:", {
