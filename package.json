@@ -2,7 +2,7 @@
   "name": "hireability-platform",
   "version": "1.0.0",
   "description": "project-name/\r │\r ├── src/\r │   ├── config/                 # Configuration files (DB, environment, etc.)\r │   │   └── db.js               # MongoDB connection setup\r │   │\r │   ├── controllers/            # Route handlers / business logic\r │   │   └── userController.js\r │   │\r │   ├── models/                 # Mongoose schemas\r │   │   └── userModel.js\r │   │\r │   ├── routes/                 # API routes\r │   │   └── userRoutes.js\r │   │\r │   ├── middlewares/            # Middlewares (auth, error handling, logging)\r │   │   ├── authMiddleware.js\r │   │   └── errorMiddleware.js\r │   │\r │   ├── utils/                  # Helper functions, utilities\r │   │   └── logger.js\r │   │\r │   ├── services/               # Business logic or external API calls\r │   │   └── emailService.js\r │   │\r │   ├── app.js                  # Express app setup\r │   └── server.js               # Starts server\r │\r ├── .env                        # Environment variables (DB URI, PORT, secrets)\r ├── package.json\r ├── package-lock.json\r └── README.md",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

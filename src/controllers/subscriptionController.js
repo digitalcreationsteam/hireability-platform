@@ -115,6 +115,41 @@ exports.getAllPlans = async (req, res) => {
   }
 };
 
+exports.getSubscriptionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const subscription = await Subscription.findById(id)
+      .populate("plan", "planName price currency billingPeriod")
+      .populate("user", "name email");
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
+    }
+
+    // Security: Verify user owns this subscription
+    if (subscription.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: subscription,
+    });
+  } catch (error) {
+    console.error("GET SUBSCRIPTION ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to fetch subscription",
+    });
+  }
+};
 
 
 // Check subscription status by ID (for PaymentSuccess page)
@@ -156,7 +191,6 @@ exports.checkSubscriptionStatus = async (req, res) => {
     });
   }
 };
-
 
 
 // Redirect helper for DODO (sends HTML that redirects to frontend)
@@ -300,38 +334,3 @@ exports.cancelSubscription = async (req, res) => {
   }
 };
 
-exports.getSubscriptionById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const subscription = await Subscription.findById(id)
-      .populate("plan", "planName price currency billingPeriod")
-      .populate("user", "name email");
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    // Security: Verify user owns this subscription
-    if (subscription.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized access",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: subscription,
-    });
-  } catch (error) {
-    console.error("GET SUBSCRIPTION ERROR:", error);
-    res.status(500).json({
-      success: false,
-      message: "Unable to fetch subscription",
-    });
-  }
-};

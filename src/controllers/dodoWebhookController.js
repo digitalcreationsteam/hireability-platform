@@ -1,105 +1,106 @@
-const Subscription = require("../models/subscriptionModel");
 const crypto = require("crypto");
-
-const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
-const DODO_WEBHOOK_SECRET =
-  DODO_MODE === "live"
-    ? process.env.DODO_LIVE_WEBHOOK_SECRET
-    : process.env.DODO_TEST_WEBHOOK_SECRET || process.env.DODO_WEBHOOK_SECRET;
+const Subscription = require("../models/subscriptionModel");
+const Log = console; // you can replace with Winston later
 
 exports.handleDodoWebhook = async (req, res) => {
+  Log.info("📥 DODO WEBHOOK HIT");
+
   try {
-    // Parse raw body
-    let payload;
-    if (Buffer.isBuffer(req.body)) {
-      try {
-        payload = JSON.parse(req.body.toString());
-      } catch (err) {
-        console.error("❌ Invalid JSON in webhook:", err);
-        return res.status(400).json({ success: false, error: "Invalid JSON" });
-      }
+    // -------------------------
+    // 1️⃣ Headers logging
+    // -------------------------
+    const signature = req.headers["x-dodo-signature"];
+    Log.info("🔐 Webhook Signature Header:", signature);
+
+    if (!signature) {
+      Log.error("❌ Missing x-dodo-signature header");
+      return res.status(400).send("Missing signature");
+    }
+
+    // -------------------------
+    // 2️⃣ Raw payload logging
+    // -------------------------
+    const payload = req.body; // RAW buffer
+    Log.info("📦 Raw Payload:", payload.toString());
+
+    const data = JSON.parse(payload.toString());
+    Log.info("📄 Parsed Payload:", data);
+
+    // -------------------------
+    // 3️⃣ Resolve secret
+    // -------------------------
+    const secret =
+      data.mode === "live"
+        ? process.env.DODO_LIVE_WEBHOOK_SECRET
+        : process.env.DODO_TEST_WEBHOOK_SECRET;
+
+    if (!secret) {
+      Log.error("❌ Webhook secret NOT FOUND for mode:", data.mode);
+      return res.status(500).send("Webhook secret missing");
+    }
+
+    Log.info("🔑 Using Webhook Mode:", data.mode);
+
+    // -------------------------
+    // 4️⃣ Signature verification
+    // -------------------------
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex");
+
+    Log.info("🧮 Expected Signature:", expected);
+
+    if (signature !== expected) {
+      Log.error("❌ Signature mismatch", {
+        received: signature,
+        expected,
+      });
+      return res.status(401).send("Invalid signature");
+    }
+
+    Log.info("✅ Signature verified");
+
+    // -------------------------
+    // 5️⃣ Handle event
+    // -------------------------
+    Log.info("📌 Webhook Status:", data.status);
+
+    if (data.status === "SUCCESS") {
+      const { order_id, subscription_id } = data;
+
+      Log.info("💰 Payment SUCCESS", {
+        order_id,
+        subscription_id,
+      });
+
+      const result = await Subscription.updateOne(
+        { orderId: order_id },
+        {
+          status: "active",
+          paymentStatus: "success",
+          paidAt: new Date(),
+          gatewaySubscriptionId: subscription_id,
+        }
+      );
+
+      Log.info("🧾 Subscription Update Result:", result);
     } else {
-      payload = req.body;
+      Log.warn("⚠️ Unhandled payment status:", data.status);
     }
 
-    console.log("📥 DODO WEBHOOK RECEIVED:", JSON.stringify(payload, null, 2));
-
-    // Extract webhook data (adjust based on actual Dodo webhook format)
-    const {
-      event_type,
-      event,
-      payment_id,
-      order_id,
-      amount,
-      currency,
-      status,
-      metadata,
-    } = payload;
-
-    // Get order_id from metadata or direct field
-    const orderId = order_id || metadata?.order_id;
-
-    if (!orderId) {
-      console.error("❌ Missing order_id in webhook");
-      return res.status(400).json({ success: false, error: "Missing order_id" });
-    }
-
-    // Find subscription
-    const subscription = await Subscription.findOne({ dodoOrderId: orderId });
-
-    if (!subscription) {
-      console.error(`❌ Subscription not found for order: ${orderId}`);
-      return res.status(404).json({ success: false, error: "Subscription not found" });
-    }
-
-    console.log("📦 Found subscription:", {
-      id: subscription._id,
-      currentStatus: subscription.paymentStatus,
-    });
-
-    // Idempotency check
-    if (
-      subscription.paymentStatus === "success" &&
-      subscription.dodoPaymentId === payment_id
-    ) {
-      console.log("✅ Already processed (idempotent)");
-      return res.json({ success: true, message: "Already processed" });
-    }
-
-    // Determine event type
-    const eventType = event_type || event || status;
-
-    // Handle events
-    switch (eventType?.toLowerCase()) {
-      case "payment.success":
-      case "payment.completed":
-      case "success":
-      case "completed":
-        await handlePaymentSuccess(subscription, payload);
-        break;
-
-      case "payment.failed":
-      case "failed":
-        await handlePaymentFailed(subscription, payload);
-        break;
-
-      case "payment.cancelled":
-      case "payment.canceled":
-      case "cancelled":
-      case "canceled":
-        await handlePaymentCancelled(subscription, payload);
-        break;
-
-      default:
-        console.log(`⚠️ Unhandled event type: ${eventType}`);
-    }
-
-    return res.json({ success: true });
-  } catch (error) {
-    console.error("❌ WEBHOOK ERROR:", error);
-    return res.status(500).json({ success: false, error: error.message });
+    // -------------------------
+    // 6️⃣ Final response
+    // -------------------------
+    Log.info("✅ Webhook processed successfully");
+    return res.status(200).send("OK");
+  } catch (err) {
+    Log.error("🔥 DODO WEBHOOK ERROR:", err);
+    return res.status(500).send("Webhook error");
   }
 };
+
+
 
 async function handlePaymentSuccess(subscription, payload) {
   const { payment_id, amount, currency } = payload;
@@ -158,4 +159,16 @@ async function handlePaymentCancelled(subscription, payload) {
   subscription.canceledAt = new Date();
 
   await subscription.save();
+}
+
+function verifyDodoSignature(req, secret) {
+  const signature = req.headers["x-dodo-signature"];
+  const payload = req.body; // RAW body
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+
+  return signature === expected;
 }

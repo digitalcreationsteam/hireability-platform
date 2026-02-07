@@ -38,7 +38,7 @@ connectDB().then(() => {
 //   })
 // );
 
-
+  app.use("/api/webhooks", require("./routes/webhookRoutes"));
   app.use(express.json());
 
   /* =======================
@@ -88,7 +88,6 @@ connectDB().then(() => {
   app.use("/api/subscription", require("./routes/subscriptionRoutes"));
   app.use("/api/admin", require("./routes/adminRoutes"));
   app.use("/api/recruiter", require("./routes/recruiterRoutes"));
-  app.use("/api/webhooks", require("./routes/webhookRoutes"));
   app.use("/api/cases", require("./routes/caseRoutes"));
 
   app.get("/", (req, res) => {
