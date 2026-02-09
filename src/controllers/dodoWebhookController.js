@@ -115,6 +115,7 @@ exports.handleDodoWebhook = async (req, res) => {
       subscription.status = "active";
       subscription.paymentStatus = "success";
       subscription.amount = data.total_amount;
+      subscription.method = data.payment_method;
       subscription.currentPeriodStart = new Date();
       subscription.dodoPaymentId = paymentId; // ✅ Store payment_id
       
