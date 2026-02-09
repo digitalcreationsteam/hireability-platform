@@ -9,10 +9,10 @@ console.log("🔧 Dodo Configuration:", {
   mode: DODO_MODE,
 });
 
+// createSubscription.js - No changes needed, keep it simple
 exports.createSubscription = async (req, res) => {
   try {
     const { planId } = req.body;
-
     if (!planId) {
       return res.status(400).json({
         success: false,
@@ -28,9 +28,9 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    // Get the correct dodo config based on mode
+    const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
     const dodoConfig = plan.dodo?.[DODO_MODE];
-
+    
     if (!dodoConfig || !dodoConfig.paymentLink) {
       console.error(
         `❌ No payment link configured for ${plan.planName} in ${DODO_MODE} mode`
@@ -60,16 +60,16 @@ exports.createSubscription = async (req, res) => {
       dodoMode: DODO_MODE,
     });
 
-    // Build checkout URL with metadata
     const checkoutUrl = `${dodoConfig.paymentLink}${
       dodoConfig.paymentLink.includes("?") ? "&" : "?"
-    }order_id=${orderId}&subscription_id=${subscription._id}`;
+    }quantity=1`;
 
-    console.log(`✅ Subscription created in ${DODO_MODE} mode`, {
+    console.log("✅ Subscription created in", DODO_MODE, "mode", {
       subscriptionId: subscription._id,
       orderId: orderId,
       planName: plan.planName,
-      checkoutUrl,
+      productId: subscription.productId,
+      amount: subscription.amount,
     });
 
     return res.json({
@@ -85,7 +85,6 @@ exports.createSubscription = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-
     res.status(500).json({
       success: false,
       message: "Unable to create subscription",
@@ -93,7 +92,6 @@ exports.createSubscription = async (req, res) => {
     });
   }
 };
-
 
 exports.getAllPlans = async (req, res) => {
   try {

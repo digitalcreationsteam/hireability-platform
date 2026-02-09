@@ -7,7 +7,6 @@ const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
 exports.initiateDodoPayment = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
-
     if (!subscriptionId) {
       return res.status(400).json({
         success: false,
@@ -46,7 +45,6 @@ exports.initiateDodoPayment = async (req, res) => {
     });
 
     const dodoConfig = plan.dodo?.[DODO_MODE];
-
     if (!dodoConfig || !dodoConfig.paymentLink) {
       console.error(
         `❌ No Dodo payment link found for ${plan.planName} in ${DODO_MODE} mode`
@@ -58,11 +56,11 @@ exports.initiateDodoPayment = async (req, res) => {
     }
 
     const paymentUrl = dodoConfig.paymentLink;
-
-    // Append metadata to the URL
+    
+    // ✅ Append metadata to the URL (Dodo will return this in webhook)
     const urlWithMetadata = `${paymentUrl}${
       paymentUrl.includes("?") ? "&" : "?"
-    }order_id=${subscription.dodoOrderId}&subscription_id=${subscriptionId}`;
+    }metadata[subscription_id]=${subscriptionId}&metadata[order_id]=${subscription.dodoOrderId}`;
 
     console.log(
       `✅ Using Dodo payment link for ${DODO_MODE} mode:`,
@@ -80,7 +78,6 @@ exports.initiateDodoPayment = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-
     return res.status(500).json({
       success: false,
       message: "Unable to initiate payment",

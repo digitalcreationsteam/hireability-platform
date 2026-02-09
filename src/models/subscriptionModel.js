@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const { fillAndStroke } = require("pdfkit");
 
 const subscriptionSchema = new mongoose.Schema(
   {
@@ -20,17 +19,14 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    /*planProduct: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "SubscriptionPlan",
-      required: true,
-    },*/
+
     status: {
       type: String,
       enum: ["pending", "active", "canceled", "expired", "past_due"],
       default: "pending",
       index: true,
     },
+
     paymentStatus: {
       type: String,
       enum: ["pending", "success", "failed"],
@@ -51,7 +47,7 @@ const subscriptionSchema = new mongoose.Schema(
 
     currentPeriodEnd: {
       type: Date,
-      default: null, // null = oneTime
+      default: null,
       index: true,
     },
 
@@ -98,24 +94,34 @@ const subscriptionSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       index: true,
-    }, 
+    },
     dodoPaymentId: {
       type: String,
       index: true,
+      sparse: true, // ✅ Allow null values, but unique when set
+    },
+    dodoMode: {
+      type: String,
+      enum: ["test", "live"],
+      required: true,
+      index: true, // ✅ Add index for faster queries
     },
     dodoSignature: {
       type: String,
       required: false,
     },
+
     // Invoices
     invoices: [
       {
         invoiceId: String,
-        invoiceURL:String,
+        invoiceURL: String,
         amount: Number,
         currency: String,
         status: String,
         paid: Boolean,
+        paymentId: String, // ✅ Store payment ID in invoice too
+        customerEmail: String,
         createdAt: Date,
       },
     ],
@@ -135,7 +141,8 @@ const subscriptionSchema = new mongoose.Schema(
 
 // -------------------- INDEXES --------------------
 subscriptionSchema.index({ user: 1, status: 1 });
-//subscriptionSchema.index({ dodoOrderId: 1 });
+subscriptionSchema.index({ productId: 1, paymentStatus: 1, dodoMode: 1 }); // ✅ Composite index for webhook matching
+subscriptionSchema.index({ createdAt: -1 }); // ✅ For time-based queries
 
 // -------------------- VIRTUALS --------------------
 subscriptionSchema.virtual("isActive").get(function () {

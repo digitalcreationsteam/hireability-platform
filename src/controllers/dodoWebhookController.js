@@ -4,18 +4,17 @@ const mongoose = require("mongoose");
 
 exports.handleDodoWebhook = async (req, res) => {
   console.log("📥 DODO WEBHOOK HIT");
-
   try {
     const payload = req.body.toString();
-
     const headers = {
       "svix-id": req.headers["webhook-id"],
       "svix-timestamp": req.headers["webhook-timestamp"],
       "svix-signature": req.headers["webhook-signature"],
     };
 
+    const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
     const secret =
-      process.env.DODO_ENV === "live"
+      DODO_MODE === "live"
         ? process.env.DODO_LIVE_WEBHOOK_SECRET
         : process.env.DODO_TEST_WEBHOOK_SECRET;
 
@@ -25,43 +24,73 @@ exports.handleDodoWebhook = async (req, res) => {
     console.log("✅ Webhook verified:", event.type);
 
     const data = event.data;
-
-    // 🔐 Extract identifiers
-    const subscriptionId =
-      data.subscription_id ||
-      data.metadata?.subscription_id ||
-      data.passthrough?.subscription_id;
-
-    const orderId =
-      data.order_id ||
-      data.metadata?.order_id ||
-      data.passthrough?.order_id;
-
     const paymentId = data.payment_id;
 
-    console.log("📦 Webhook identifiers:", {
-      subscriptionId,
-      orderId,
+    console.log("📦 Webhook data:", {
+      eventType: event.type,
       paymentId,
+      status: data.status,
+      amount: data.total_amount,
+      productId: data.product_cart?.[0]?.product_id,
+      customerEmail: data.customer?.email,
     });
 
-    // ❌ Nothing to match against
-    if (!subscriptionId && !orderId) {
-      console.error("❌ No subscriptionId or orderId in webhook");
-      return res.status(200).send("OK");
+    if (!paymentId) {
+      console.error("❌ No payment_id in webhook");
+      return res.status(200).send("OK - No payment_id");
     }
 
-    // Build safe query
-    const query = {
-      $or: [],
-    };
+    // ✅ STEP 1: Check if this payment_id already processed
+    let subscription = await Subscription.findOne({ 
+      dodoPaymentId: paymentId 
+    });
 
-    if (subscriptionId && mongoose.Types.ObjectId.isValid(subscriptionId)) {
-      query.$or.push({ _id: subscriptionId });
+    if (subscription) {
+      console.log("⚠️ Payment already processed:", {
+        subscriptionId: subscription._id,
+        currentStatus: subscription.paymentStatus,
+      });
+      
+      // If webhook is same status, skip duplicate processing
+      if (
+        (event.type === "payment.succeeded" && subscription.paymentStatus === "success") ||
+        (event.type === "payment.failed" && subscription.paymentStatus === "failed")
+      ) {
+        return res.status(200).send("OK - Already processed");
+      }
     }
 
-    if (orderId) {
-      query.$or.push({ dodoOrderId: orderId });
+    // ✅ STEP 2: Find subscription by matching criteria if not found by payment_id
+    if (!subscription) {
+      const productId = data.product_cart?.[0]?.product_id;
+      const amount = data.total_amount;
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      if (!productId) {
+        console.error("❌ No product_id in webhook");
+        return res.status(200).send("OK - No product");
+      }
+
+      // Find the most recent pending subscription that matches
+      subscription = await Subscription.findOne({
+        productId: productId,
+        amount: amount,
+        paymentStatus: "pending",
+        dodoMode: DODO_MODE,
+        createdAt: { $gte: fiveMinutesAgo },
+      }).sort({ createdAt: -1 });
+
+      if (!subscription) {
+        console.error("❌ No matching subscription found", {
+          productId,
+          amount,
+          mode: DODO_MODE,
+          searchedSince: fiveMinutesAgo,
+        });
+        return res.status(200).send("OK - No subscription match");
+      }
+
+      console.log("✅ Found matching subscription:", subscription._id);
     }
 
     // -------------------------
@@ -70,10 +99,12 @@ exports.handleDodoWebhook = async (req, res) => {
     const invoiceEntry = {
       invoiceId: data.invoice_id || null,
       invoiceURL: data.invoice_url || null,
-      amount: data.total_amount,
-      currency: data.currency,
+      amount: data.settlement_amount || data.total_amount || 0,
+      currency: data.settlement_currency || data.currency || "INR",
       status: data.status,
       paid: event.type === "payment.succeeded",
+      paymentId: paymentId,
+      customerEmail: data.customer?.email,
       createdAt: new Date(),
     };
 
@@ -81,41 +112,62 @@ exports.handleDodoWebhook = async (req, res) => {
     // ✅ PAYMENT SUCCESS
     // -------------------------
     if (event.type === "payment.succeeded") {
-      const subscription = await Subscription.findOneAndUpdate(
-        query,
-        {
-          status: "active",
-          paymentStatus: "success",
-          currentPeriodStart: new Date(),
-          dodoPaymentId: paymentId,
-          $push: { invoices: invoiceEntry },
-        },
-        { new: true }
-      );
+      subscription.status = "active";
+      subscription.paymentStatus = "success";
+      subscription.currentPeriodStart = new Date();
+      subscription.dodoPaymentId = paymentId; // ✅ Store payment_id
+      
+      // Calculate period end based on billing period
+      if (subscription.billingPeriod === "monthly") {
+        subscription.currentPeriodEnd = new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        );
+      } else if (subscription.billingPeriod === "yearly") {
+        subscription.currentPeriodEnd = new Date(
+          Date.now() + 365 * 24 * 60 * 60 * 1000
+        );
+      }
+      
+      subscription.invoices.push(invoiceEntry);
+      await subscription.save();
 
-      console.log("💰 Subscription activated:", subscription?._id);
+      console.log("✅ Payment succeeded - Subscription activated:", {
+        subscriptionId: subscription._id,
+        orderId: subscription.dodoOrderId,
+        paymentId: paymentId,
+        customerEmail: data.customer?.email,
+        status: subscription.status,
+        paymentStatus: subscription.paymentStatus,
+      });
     }
 
     // -------------------------
     // ❌ PAYMENT FAILED
     // -------------------------
     if (event.type === "payment.failed") {
-      await Subscription.findOneAndUpdate(
-        query,
-        {
-          status: "past_due",
-          paymentStatus: "failed",
-          dodoPaymentId: paymentId || null,
-          $push: { invoices: invoiceEntry },
-        }
-      );
+      subscription.status = "past_due";
+      subscription.paymentStatus = "failed";
+      subscription.dodoPaymentId = paymentId; // ✅ Store payment_id even for failed
+      subscription.invoices.push(invoiceEntry);
+      await subscription.save();
 
-      console.log("❌ Payment failed for:", subscriptionId || orderId);
+      console.log("❌ Payment failed - Subscription marked as past_due:", {
+        subscriptionId: subscription._id,
+        orderId: subscription.dodoOrderId,
+        paymentId: paymentId,
+        errorCode: data.error_code,
+        errorMessage: data.error_message,
+        status: subscription.status,
+        paymentStatus: subscription.paymentStatus,
+      });
     }
 
     return res.status(200).send("OK");
   } catch (err) {
-    console.error("❌ Webhook verification failed:", err.message);
+    console.error("❌ Webhook error:", {
+      message: err.message,
+      stack: err.stack,
+    });
     return res.status(400).send("Invalid signature");
   }
 };
