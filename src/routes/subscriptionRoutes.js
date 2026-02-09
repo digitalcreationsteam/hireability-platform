@@ -39,7 +39,7 @@ router.post("/payments/dodo/initiate", protect, initiateDodoPayment);
 
 
 // routes/subscriptionRoutes.js
-router.get("/dodo/redirect", dodoRedirectHelper);
+// router.get("/dodo/redirect", dodoRedirectHelper);
 
 // Download invoice
 router.get("/invoice/:invoiceId", protect, downloadInvoice);

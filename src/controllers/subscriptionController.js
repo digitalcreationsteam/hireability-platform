@@ -8,8 +8,6 @@ const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
 console.log("🔧 Dodo Configuration:", {
   mode: DODO_MODE,
 });
-
-// createSubscription.js - No changes needed, keep it simple
 exports.createSubscription = async (req, res) => {
   try {
     const { planId } = req.body;
@@ -19,7 +17,6 @@ exports.createSubscription = async (req, res) => {
         message: "planId is required",
       });
     }
-
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
       return res.status(404).json({
@@ -28,9 +25,7 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
-    const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
     const dodoConfig = plan.dodo?.[DODO_MODE];
-    
     if (!dodoConfig || !dodoConfig.paymentLink) {
       console.error(
         `❌ No payment link configured for ${plan.planName} in ${DODO_MODE} mode`
@@ -60,16 +55,16 @@ exports.createSubscription = async (req, res) => {
       dodoMode: DODO_MODE,
     });
 
+    // ✅ Build checkout URL with metadata (Dodo will return this in webhook)
     const checkoutUrl = `${dodoConfig.paymentLink}${
       dodoConfig.paymentLink.includes("?") ? "&" : "?"
-    }quantity=1`;
+    }metadata[subscription_id]=${subscription._id}&metadata[order_id]=${orderId}`;
 
     console.log("✅ Subscription created in", DODO_MODE, "mode", {
       subscriptionId: subscription._id,
       orderId: orderId,
       planName: plan.planName,
-      productId: subscription.productId,
-      amount: subscription.amount,
+      checkoutUrl,
     });
 
     return res.json({
@@ -92,6 +87,91 @@ exports.createSubscription = async (req, res) => {
     });
   }
 };
+// exports.createSubscription = async (req, res) => {
+//   try {
+//     const { planId } = req.body;
+
+//     if (!planId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "planId is required",
+//       });
+//     }
+
+//     const plan = await SubscriptionPlan.findById(planId);
+//     if (!plan) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Plan not found",
+//       });
+//     }
+
+//     // Get the correct dodo config based on mode
+//     const dodoConfig = plan.dodo?.[DODO_MODE];
+
+//     if (!dodoConfig || !dodoConfig.paymentLink) {
+//       console.error(
+//         `❌ No payment link configured for ${plan.planName} in ${DODO_MODE} mode`
+//       );
+//       return res.status(400).json({
+//         success: false,
+//         message: `Payment link not configured for this plan in ${DODO_MODE} mode`,
+//       });
+//     }
+
+//     const orderId = `ORD_${Date.now()}_${crypto
+//       .randomBytes(4)
+//       .toString("hex")}`;
+
+//     const subscription = await Subscription.create({
+//       user: req.user._id,
+//       plan: plan._id,
+//       planName: plan.planName,
+//       productId: dodoConfig.productId || plan.productName,
+//       amount: plan.price,
+//       currency: plan.currency,
+//       billingPeriod: plan.billingPeriod,
+//       paymentMethod: "dodo",
+//       status: "pending",
+//       paymentStatus: "pending",
+//       dodoOrderId: orderId,
+//       dodoMode: DODO_MODE,
+//     });
+
+//     // Build checkout URL with metadata
+//     const checkoutUrl = `${dodoConfig.paymentLink}${
+//       dodoConfig.paymentLink.includes("?") ? "&" : "?"
+//     }order_id=${orderId}&subscription_id=${subscription._id}`;
+
+//     console.log(`✅ Subscription created in ${DODO_MODE} mode`, {
+//       subscriptionId: subscription._id,
+//       orderId: orderId,
+//       planName: plan.planName,
+//       checkoutUrl,
+//     });
+
+//     return res.json({
+//       success: true,
+//       data: {
+//         subscriptionId: subscription._id,
+//         checkoutUrl,
+//         mode: DODO_MODE,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("❌ CREATE SUB ERROR:", {
+//       message: error.message,
+//       stack: error.stack,
+//     });
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Unable to create subscription",
+//       error: process.env.NODE_ENV === "development" ? error.message : undefined,
+//     });
+//   }
+// };
+
 
 exports.getAllPlans = async (req, res) => {
   try {
