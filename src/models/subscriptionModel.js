@@ -75,8 +75,8 @@ const subscriptionSchema = new mongoose.Schema(
     },
 
     amount: {
-      type: Number,
-      required: true,
+      type: Decimal128,
+      required: false,
     },
 
     currency: {

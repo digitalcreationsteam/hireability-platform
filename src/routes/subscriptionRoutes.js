@@ -47,31 +47,31 @@ router.get("/invoice/:invoiceId", protect, downloadInvoice);
 
 
 // Get all subscriptions for user
-router.get(
-  "/",
-  protect,
-  authorizeRoles("student"),
-  getSubscriptionDetails
-);
+// router.get(
+//   "/",
+//   protect,
+//   authorizeRoles("student"),
+//   getSubscriptionDetails
+// );
 
 // Get current active subscription
-router.get(
-  "/current",
-  protect,
-  authorizeRoles("student"),
-  getCurrentSubscription
-);
+// router.get(
+//   "/current",
+//   protect,
+//   authorizeRoles("student"),
+//   getCurrentSubscription
+// );
 
 // Check subscription status by ID (for PaymentSuccess page - no auth required)
-router.get("/status/:subscriptionId", checkSubscriptionStatus);
+// router.get("/status/:subscriptionId", checkSubscriptionStatus);
 // Note: test-only routes (mark-paid, redirect) removed in cleanup
 
 // Cancel subscription
-router.delete(
-  "/:subscriptionId",
-  protect,
-  authorizeRoles("student"),
-  cancelSubscription
-);
+// router.delete(
+//   "/:subscriptionId",
+//   protect,
+//   authorizeRoles("student"),
+//   cancelSubscription
+// );
 
 module.exports = router;

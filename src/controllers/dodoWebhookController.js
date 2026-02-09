@@ -74,7 +74,7 @@ exports.handleDodoWebhook = async (req, res) => {
       // Find the most recent pending subscription that matches
       subscription = await Subscription.findOne({
         productId: productId,
-        amount: amount,
+        // amount: amount,
         paymentStatus: "pending",
         dodoMode: DODO_MODE,
         createdAt: { $gte: fiveMinutesAgo },
@@ -83,7 +83,7 @@ exports.handleDodoWebhook = async (req, res) => {
       if (!subscription) {
         console.error("❌ No matching subscription found", {
           productId,
-          amount,
+          // amount,
           mode: DODO_MODE,
           searchedSince: fiveMinutesAgo,
         });
@@ -114,6 +114,7 @@ exports.handleDodoWebhook = async (req, res) => {
     if (event.type === "payment.succeeded") {
       subscription.status = "active";
       subscription.paymentStatus = "success";
+      subscription.amount = data.total_amount;
       subscription.currentPeriodStart = new Date();
       subscription.dodoPaymentId = paymentId; // ✅ Store payment_id
       
@@ -158,6 +159,7 @@ exports.handleDodoWebhook = async (req, res) => {
         errorCode: data.error_code,
         errorMessage: data.error_message,
         status: subscription.status,
+        data:data,
         paymentStatus: subscription.paymentStatus,
       });
     }
