@@ -83,4 +83,89 @@ router.get("/recruiter-count",
   adminController.getRecruiterCount
 )
 
+// total user count
+router.get("/user-count", 
+  protect,
+  authorizeRoles("admin"),
+  adminController.totalUser
+)
+
+router.get("/:userId/assessment-data", 
+  protect,
+  authorizeRoles("admin"),
+  adminController.getUserAssessmentData
+)
+
+router.get(
+  "/analytics/avg-case-studies-per-user",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getAvgCaseStudiesPerUser
+);
+
+router.get(
+  "/analytics/avg-case-studies-completed-per-user",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getAvgCaseStudiesCompletedPerUser
+);
+
+router.get(
+  "/analytics/case-completion-rate",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getCaseCompletionRate
+);
+
+router.get(
+  "/analytics/avg-time-per-case",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getAvgTimeSpentPerCase
+);
+
+router.get(
+  "/analytics/case-dropoff/:caseId",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getCaseDropOffPoints
+);
+
+router.get(
+  "/analytics/total-paying-users",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getTotalPayingUsers
+);
+
+router.get(
+  "/analytics/daily-active-users",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getDailyActiveUsers
+);
+
+router.get(
+  "/analytics/monthly-active-users",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getMonthlyActiveUsers
+);
+
+router.get(
+  "/analytics/new-users-today",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getNewUsersToday
+);
+
+router.get(
+  "/analytics/conversion-funnel",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getConversionFunnel
+);
+
+
+
 module.exports = router;

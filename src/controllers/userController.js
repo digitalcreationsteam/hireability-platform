@@ -10,4 +10,7 @@ const getUsers = async (req, res) => {
     }
 };
 
+// get total count of user
+
+
 module.exports = { getUsers };
