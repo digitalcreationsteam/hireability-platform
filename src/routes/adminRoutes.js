@@ -83,4 +83,9 @@ router.get("/recruiter-count",
   adminController.getRecruiterCount
 )
 
+
+//get paid user count
+router.get("/paid-users", adminController.getPayingUsersCount);
+
+
 module.exports = router;
