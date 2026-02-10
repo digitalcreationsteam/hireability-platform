@@ -70,12 +70,12 @@ const subscriptionSchema = new mongoose.Schema(
     // Payment
     paymentMethod: {
       type: String,
-      enum: ["dodo", "razorpay", "stripe", "paypal", "free"],
+      enum: ["dodo", "razorpay", "stripe", "paypal", "free" ,"upi", "card"],
       required: true,
     },
 
     amount: {
-      type: mongoose.Schema.Types.Decimal128,
+      type: Number,
       required: false,
     },
 
