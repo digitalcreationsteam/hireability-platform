@@ -3,6 +3,8 @@ const CaseOpening = require("../models/caseOpeningModel");
 const CaseQuestion = require("../models/caseQuestionsModel");
 const CaseReveal = require("../models/caseReveal");
 const UserCaseAttempt = require("../models/userCaseAttemptModel");
+const userCaseAttemptModel = require("../models/userCaseAttemptModel");
+const UserScore = require("../models/userScoreModel");
 
 exports.getAllCases = async (req, res) => {
   try {
@@ -61,6 +63,69 @@ exports.startCase = async (req, res) => {
   }
 };
 
+// exports.getCurrentQuestion = async (req, res) => {
+//   try {
+//     const { attemptId } = req.params;
+
+//     const attempt = await UserCaseAttempt.findById(attemptId);
+//     if (!attempt || attempt.isCompleted) {
+//       return res.status(400).json({ message: "Invalid attempt" });
+//     }
+
+//     const question = await CaseQuestion.findOne({
+//       caseId: attempt.caseId,
+//       order: attempt.currentQuestion
+//     });
+
+//     if (!question) {
+//       return res.status(404).json({ message: "Question not found" });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       data: question
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// exports.getCurrentQuestion = async (req, res) => {
+//   try {
+//     const { attemptId } = req.params;
+
+//     const attempt = await UserCaseAttempt.findById(attemptId);
+//     if (!attempt || attempt.isCompleted) {
+//       return res.status(400).json({ message: "Invalid attempt" });
+//     }
+
+//     // Fetch all questions for this case, sorted by order
+//     const questions = await CaseQuestion.find({ caseId: attempt.caseId }).sort({ order: 1 });
+
+//     // Find the first question that has NOT been answered yet
+//     const nextQuestion = questions.find(
+//       (q) => !attempt.answers.some(a => a.questionId.toString() === q._id.toString())
+//     );
+
+//     if (!nextQuestion) {
+//       // ✅ All questions answered → return null or flag completed
+//       return res.status(200).json({ success: true, data: null, completed: true });
+//     }
+
+//     // Return next unanswered question
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         _id: nextQuestion._id,
+//         questionText: nextQuestion.questionText,
+//         options: nextQuestion.options
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 exports.getCurrentQuestion = async (req, res) => {
   try {
     const { attemptId } = req.params;
@@ -70,23 +135,116 @@ exports.getCurrentQuestion = async (req, res) => {
       return res.status(400).json({ message: "Invalid attempt" });
     }
 
-    const question = await CaseQuestion.findOne({
-      caseId: attempt.caseId,
-      order: attempt.currentQuestion
-    });
+    // Fetch all questions for this case, sorted by order
+    const questions = await CaseQuestion.find({ caseId: attempt.caseId }).sort({ order: 1 });
 
-    if (!question) {
-      return res.status(404).json({ message: "Question not found" });
+    // Find the first question that has NOT been answered yet
+    const nextQuestion = questions.find(
+      (q) => !attempt.answers.some(a => a.questionId.toString() === q._id.toString())
+    );
+
+    if (!nextQuestion) {
+      // ✅ All questions answered → return null or flag completed
+      return res.status(200).json({ success: true, data: null, completed: true, caseId: attempt.caseId });
     }
 
+    // Return next unanswered question
     res.status(200).json({
       success: true,
-      data: question
+      data: {
+        _id: nextQuestion._id,
+        questionText: nextQuestion.questionText,
+        options: nextQuestion.options,
+        caseId: attempt.caseId // ✅ include caseId here
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+// exports.submitAnswer = async (req, res) => {
+//   try {
+//     const { attemptId } = req.params;
+//     const { questionId, selectedOption } = req.body;
+
+//     const attempt = await UserCaseAttempt.findById(attemptId);
+//     if (!attempt || attempt.isCompleted) {
+//       return res.status(400).json({ message: "Invalid attempt" });
+//     }
+
+//     const alreadyAnswered = attempt.answers.find(
+//       a => a.questionId.toString() === questionId
+//     );
+
+//     if (alreadyAnswered) {
+//       return res.status(400).json({
+//         message: "Answer already submitted"
+//       });
+//     }
+
+//     attempt.answers.push({
+//       questionId,
+//       selectedOption
+//     });
+
+//     attempt.currentQuestion += 1;
+
+//     await attempt.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Answer saved"
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// exports.submitAttempt = async (req, res) => {
+//   try {
+//     const { attemptId } = req.params;
+
+//     const attempt = await UserCaseAttempt.findById(attemptId);
+//     if (!attempt) {
+//       return res.status(404).json({ message: "Attempt not found" });
+//     }
+
+//     const questions = await CaseQuestion.find({
+//       caseId: attempt.caseId
+//     }).select("+correctOption");
+
+//     let score = 0;
+
+//     questions.forEach(question => {
+//       const userAnswer = attempt.answers.find(
+//         a => a.questionId.toString() === question._id.toString()
+//       );
+
+//       if (
+//         userAnswer &&
+//         userAnswer.selectedOption === question.correctOption
+//       ) {
+//         score += 2;
+//       }
+//     });
+
+//     attempt.score = score;
+//     attempt.isCompleted = true;
+
+//     await attempt.save();
+
+//     res.status(200).json({
+//       success: true,
+//       score,
+//       retryAvailable: attempt.attemptNumber < 2
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 exports.submitAnswer = async (req, res) => {
   try {
@@ -99,18 +257,19 @@ exports.submitAnswer = async (req, res) => {
     }
 
     const alreadyAnswered = attempt.answers.find(
-      a => a.questionId.toString() === questionId
+      (a) => a.questionId.toString() === questionId
     );
 
     if (alreadyAnswered) {
       return res.status(400).json({
-        message: "Answer already submitted"
+        message: "Answer already submitted",
+        caseId: attempt.caseId, // ✅ include caseId
       });
     }
 
     attempt.answers.push({
       questionId,
-      selectedOption
+      selectedOption,
     });
 
     attempt.currentQuestion += 1;
@@ -119,12 +278,14 @@ exports.submitAnswer = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Answer saved"
+      message: "Answer saved",
+      caseId: attempt.caseId, // ✅ include caseId
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.submitAttempt = async (req, res) => {
   try {
@@ -141,15 +302,12 @@ exports.submitAttempt = async (req, res) => {
 
     let score = 0;
 
-    questions.forEach(question => {
+    questions.forEach((question) => {
       const userAnswer = attempt.answers.find(
-        a => a.questionId.toString() === question._id.toString()
+        (a) => a.questionId.toString() === question._id.toString()
       );
 
-      if (
-        userAnswer &&
-        userAnswer.selectedOption === question.correctOption
-      ) {
+      if (userAnswer && userAnswer.selectedOption === question.correctOption) {
         score += 2;
       }
     });
@@ -162,12 +320,70 @@ exports.submitAttempt = async (req, res) => {
     res.status(200).json({
       success: true,
       score,
-      retryAvailable: attempt.attemptNumber < 2
+      retryAvailable: attempt.attemptNumber < 2,
+      caseId: attempt.caseId, // ✅ include caseId in response
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+// exports.submitAttempt = async (req, res) => {
+//   try {
+//     const { attemptId } = req.params;
+
+//     const attempt = await userCaseAttemptModel.findById(attemptId);
+//     if (!attempt) {
+//       return res.status(404).json({ message: "Attempt not found" });
+//     }
+
+//     // ❌ Prevent double submission
+//     if (attempt.isCompleted) {
+//       return res.status(400).json({ message: "Attempt already submitted" });
+//     }
+
+//     const questions = await CaseQuestion.find({
+//       caseId: attempt.caseId
+//     }).select("+correctOption");
+
+//     let score = 0;
+
+//     questions.forEach((question) => {
+//       const userAnswer = attempt.answers.find(
+//         (a) => a.questionId.toString() === question._id.toString()
+//       );
+
+//       if (userAnswer && userAnswer.selectedOption === question.correctOption) {
+//         score += 2; // 2 points per correct answer
+//       }
+//     });
+
+//     // 1️⃣ Save attempt result
+//     attempt.score = score;
+//     attempt.isCompleted = true;
+//     await attempt.save();
+
+//     // 2️⃣ Update UserScore (caseStudyScore)
+//     await UserScore.findOneAndUpdate(
+//       { userId: attempt.userId },
+//       {
+//         $inc: {
+//           caseStudyScore: score
+//         }
+//       },
+//       { upsert: true, new: true }
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       score,
+//       retryAvailable: attempt.attemptNumber < 2,
+//       caseId: attempt.caseId
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 exports.getCaseReveal = async (req, res) => {
   try {
@@ -200,3 +416,4 @@ exports.getCaseReveal = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
