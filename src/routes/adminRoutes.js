@@ -83,11 +83,6 @@ router.get("/recruiter-count",
   adminController.getRecruiterCount
 )
 
-<<<<<<< HEAD
-
-//get paid user count
-router.get("/paid-users", adminController.getPayingUsersCount);
-=======
 // total user count
 router.get("/user-count", 
   protect,
@@ -171,7 +166,6 @@ router.get(
   adminController.getConversionFunnel
 );
 
->>>>>>> shreya
 
 
 module.exports = router;
