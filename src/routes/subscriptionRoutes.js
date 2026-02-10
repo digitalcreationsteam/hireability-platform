@@ -63,7 +63,7 @@ router.get("/invoice/:invoiceId", protect, downloadInvoice);
 // );
 
 // Check subscription status by ID (for PaymentSuccess page - no auth required)
-router.get('/subscriptions/:id/status', checkSubscriptionStatus);
+router.get('/:id/status', checkSubscriptionStatus);
 // Note: test-only routes (mark-paid, redirect) removed in cleanup
 
 // Cancel subscription
