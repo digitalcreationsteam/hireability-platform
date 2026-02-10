@@ -1,5 +1,11 @@
 const User = require("../../models/userModel");
 const userScoreModel = require("../../models/userScoreModel");
+const Demographic = require("../../models/demographicsModel");
+const Education = require("../../models/educationModel");
+
+const Subscription = require("../../models/subscriptionModel");
+
+
 
 // ===============================
 // ADMIN DASHBOARD
@@ -28,14 +34,49 @@ exports.getAdminDashboard = async (req, res) => {
 // ===============================
 // GET ALL USERS
 // ===============================
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     const users = await User.find().select("-password");
+
+//     res.json({
+//       success: true,
+//       count: users.length,
+//       users,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find().select("-password").lean();
+
+    const demographics = await Demographic.find().lean();
+    const educations = await Education.find().lean();
+
+    const enrichedUsers = users.map((u) => {
+      const demo = demographics.find(
+        (d) => d.userId?.toString() === u._id.toString()
+      );
+
+      const edu = educations.find(
+        (e) => e.userId?.toString() === u._id.toString()
+      );
+
+      return {
+        ...u,
+        location: {
+          country: demo?.country || null,
+          city: demo?.city || null,
+          university: edu?.schoolName || null,
+        },
+      };
+    });
 
     res.json({
       success: true,
-      count: users.length,
-      users,
+      count: enrichedUsers.length,
+      users: enrichedUsers,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -237,3 +278,25 @@ exports.getRecruiterCount = async (req, res) => {
 };
 
 
+exports.getPayingUsersCount = async (req, res) => {
+  try {
+    const result = await Subscription.aggregate([
+      { $match: { paymentStatus: "success" } },
+      { $group: { _id: "$user" } },
+      { $count: "payingUsers" },
+    ]);
+
+    const count = result.length > 0 ? result[0].payingUsers : 0;
+
+    res.json({
+      success: true,
+      payingUsers: count,
+    });
+  } catch (error) {
+    console.error("Paying users count error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to fetch paying users",
+    });
+  }
+};
