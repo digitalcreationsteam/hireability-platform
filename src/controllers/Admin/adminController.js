@@ -3,6 +3,8 @@ const userCaseAttemptModel = require("../../models/userCaseAttemptModel");
 const User = require("../../models/userModel");
 const userScoreModel = require("../../models/userScoreModel");
 const Subscription = require("../../models/subscriptionModel");
+const demographicsModel = require("../../models/demographicsModel");
+const educationModel = require("../../models/educationModel");
 
 
 // ===============================
@@ -49,8 +51,8 @@ exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password").lean();
 
-    const demographics = await Demographic.find().lean();
-    const educations = await Education.find().lean();
+    const demographics = await demographicsModel.find().lean();
+    const educations = await educationModel.find().lean();
 
     const enrichedUsers = users.map((u) => {
       const demo = demographics.find(
