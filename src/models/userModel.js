@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
     // Add these fields for Google OAuth
     googleId: {
       type: String,
