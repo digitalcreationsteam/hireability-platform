@@ -13,6 +13,21 @@ const caseStudySchema = new mongoose.Schema({
     required: true
   },
   description: String,
+  
+  domainId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Domain",
+      required: true,
+      index: true,
+    },
+
+    // 🔥 DOMAIN SNAPSHOT (denormalized)
+    domainName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
   totalQuestions: {
     type: Number,
     default: 10
