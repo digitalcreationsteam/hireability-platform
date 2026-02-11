@@ -98,7 +98,7 @@ app.use(`${API_PREFIX}/user`, require("./routes/userRoutes"));
 app.use(`${API_PREFIX}/subscription`, require("./routes/subscriptionRoutes"));
 app.use(`${API_PREFIX}/admin`, require("./routes/adminRoutes"));
 app.use(`${API_PREFIX}/recruiter`, require("./routes/recruiterRoutes"));
-app.use(`${API_PREFIX}/cases`, require("./routes/caseRoutes"));
+app.use(`${API_PREFIX}/admin/cases`, require("./routes/caseRoutes"));
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });

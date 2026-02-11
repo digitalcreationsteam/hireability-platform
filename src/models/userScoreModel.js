@@ -25,6 +25,7 @@ const userScoreSchema = new mongoose.Schema({
   certificationScore: { type: Number, default: 0 },
   awardScore: { type: Number, default: 0 },
   projectScore: { type: Number, default: 0 },
+  caseStudyScore: { type: Number, default: 0 },
 
   experienceIndexScore: { type: Number, default: 0 },
   skillIndexScore: { type: Number, default: 0 },

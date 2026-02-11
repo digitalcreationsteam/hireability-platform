@@ -2,27 +2,93 @@ const CaseStudy = require("../../models/caseStudyModel");
 const CaseOpening = require("../../models/caseOpeningModel");
 const CaseQuestion = require("../../models/caseQuestionsModel");
 const CaseReveal = require("../../models/caseReveal");
+const Domain = require("../../models/domainModel");
+
+// exports.createCaseStudy = async (req, res) => {
+//   try {
+//     const { title, description, difficulty, maxAttempts } = req.body;
+
+//     const caseStudy = await CaseStudy.create({
+//       title,
+//       description,
+//       difficulty,
+//       maxAttempts,
+//       isActive: false // draft mode
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       data: caseStudy
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 exports.createCaseStudy = async (req, res) => {
   try {
-    const { title, description, difficulty, maxAttempts } = req.body;
-
-    const caseStudy = await CaseStudy.create({
+    const {
       title,
       description,
       difficulty,
       maxAttempts,
-      isActive: false // draft mode
+      domainId,
+      domainName,
+      caseCode
+    } = req.body;
+
+    // 🔴 Validation
+    if (!domainId && !domainName) {
+      return res.status(400).json({
+        message: "Either domainId or domainName is required",
+      });
+    }
+
+    let domain;
+
+    // 1️⃣ If domainId is provided → fetch domain
+    if (domainId) {
+      domain = await Domain.findById(domainId);
+      if (!domain) {
+        return res.status(404).json({
+          message: "Domain not found with given domainId",
+        });
+      }
+    }
+
+    // 2️⃣ If domainName is provided → find or create
+    if (!domain && domainName) {
+      domain = await Domain.findOne({ name: domainName.trim() });
+
+      if (!domain) {
+        domain = await Domain.create({
+          name: domainName.trim(),
+        });
+      }
+    }
+
+    // 3️⃣ Create Case Study
+    const caseStudy = await CaseStudy.create({
+      caseCode,
+      title,
+      description,
+      difficulty,
+      maxAttempts,
+      domainId: domain._id,
+      domainName: domain.name,
+      isActive: false, // draft mode
     });
 
     res.status(201).json({
       success: true,
-      data: caseStudy
+      data: caseStudy,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.updateCaseStudy = async (req, res) => {
   try {
