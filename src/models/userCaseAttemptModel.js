@@ -33,6 +33,10 @@ const userCaseAttemptSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+   isSubmitted: {   // 🔥 ADD THIS
+    type: Boolean,
+    default: false
+  },
   revealUnlocked: {
     type: Boolean,
     default: false
