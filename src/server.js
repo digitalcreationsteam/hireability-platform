@@ -11,6 +11,9 @@ const MongoStore = ConnectMongo.default ?? ConnectMongo;
 const path = require("path");
 const connectDB = require("./config/db");
 
+const universityRoutes = require("./routes/universityRoutes");
+
+
 const app = express();
 
 /* =======================
@@ -90,6 +93,8 @@ connectDB().then(() => {
   app.use("/api/recruiter", require("./routes/recruiterRoutes"));
   app.use("/api/cases", require("./routes/caseRoutes"));
   app.use("/api/admin/cases" , require("./routes/adminCaseRoutes"));
+  app.use("/universities", require("./routes/universityRoutes"));
+
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
