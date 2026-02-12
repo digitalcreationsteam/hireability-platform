@@ -166,6 +166,29 @@ router.get(
   adminController.getConversionFunnel
 );
 
+// =================================================
+// 📍 LOCATION-BASED FILTERS (NEW)
+// =================================================
+router.get(
+  "/analytics/countries",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getAllCountries
+);
+
+router.get(
+  "/analytics/states",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getStatesByCountry
+);
+
+router.get(
+  "/analytics/users-by-location",
+  protect,
+  authorizeRoles("admin"),
+  adminController.getUsersByLocation
+);
 
 
 module.exports = router;
