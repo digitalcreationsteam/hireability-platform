@@ -778,3 +778,190 @@ exports.getPayingUsersCount = async (req, res) => {
     });
   }
 };
+
+// =================================================
+// 📍 LOCATION-BASED FILTERS (NEW)
+// =================================================
+
+/**
+ * Get all countries with users
+ * GET /api/admin/analytics/countries
+ */
+exports.getAllCountries = async (req, res) => {
+  try {
+    // Using demographicsModel to get unique countries
+    const countries = await demographicsModel.aggregate([
+      {
+        $match: {
+          country: { $exists: true, $ne: null, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$country",
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+      {
+        $project: {
+          _id: 0,
+          country: "$_id",
+        },
+      },
+    ]);
+
+    const countryList = countries.map((c) => c.country).filter((c) => c);
+
+    res.status(200).json({
+      success: true,
+      data: countryList,
+      count: countryList.length,
+    });
+  } catch (error) {
+    console.error("Error fetching countries:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch countries",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get states for a specific country
+ * GET /api/admin/analytics/states?country=India
+ */
+exports.getStatesByCountry = async (req, res) => {
+  try {
+    const { country } = req.query;
+
+    if (!country) {
+      return res.status(400).json({
+        success: false,
+        message: "Country parameter is required",
+      });
+    }
+
+    // Using demographicsModel to get states by country
+    const states = await demographicsModel.aggregate([
+      {
+        $match: {
+          country: country,
+          state: { $exists: true, $ne: null, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$state",
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+      {
+        $project: {
+          _id: 0,
+          state: "$_id",
+        },
+      },
+    ]);
+
+    const stateList = states.map((s) => s.state).filter((s) => s);
+
+    res.status(200).json({
+      success: true,
+      data: stateList,
+      count: stateList.length,
+    });
+  } catch (error) {
+    console.error("Error fetching states:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch states",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get user statistics for a specific location
+ * GET /api/admin/analytics/users-by-location?country=India&state=Maharashtra
+ */
+exports.getUsersByLocation = async (req, res) => {
+  try {
+    const { country, state } = req.query;
+
+    if (!country || !state) {
+      return res.status(400).json({
+        success: false,
+        message: "Both country and state parameters are required",
+      });
+    }
+
+    // Get user IDs from demographics for the location
+    const userDemos = await demographicsModel.find({
+      country: country,
+      state: state,
+    }).select("userId");
+
+    const userIds = userDemos.map(demo => demo.userId);
+
+    // Get user count and breakdown
+    const totalCount = userIds.length;
+
+    const breakdown = await User.aggregate([
+      {
+        $match: {
+          _id: { $in: userIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$role",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          role: "$_id",
+          count: 1,
+        },
+      },
+    ]);
+
+    // Extract students and recruiters
+    let students = 0;
+    let recruiters = 0;
+
+    breakdown.forEach((item) => {
+      if (item.role === "student") {
+        students = item.count;
+      } else if (item.role === "recruiter") {
+        recruiters = item.count;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        count: totalCount,
+        students: students,
+        recruiters: recruiters,
+        location: {
+          country: country,
+          state: state,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching users by location:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users by location",
+      error: error.message,
+    });
+  }
+};
