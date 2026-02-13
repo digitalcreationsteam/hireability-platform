@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
       default: "student",
     },
 
+    country: {
+      type: String, // "IN", "US", "UK"
+      default: "IN",
+    },
+
     socialLogin: { type: String, default: null },
 
     isVerified: { type: Boolean, default: false },
