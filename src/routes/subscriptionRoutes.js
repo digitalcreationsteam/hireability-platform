@@ -15,6 +15,7 @@ const {
 } = require("../controllers/subscriptionController");
 const { initiateDodoPayment } = require("../controllers/paymentController");
 const { downloadInvoice } = require("../controllers/invoiceController");
+const auth = require("../middlewares/auth");
 
 
 
@@ -25,7 +26,7 @@ const router = express.Router();
 ================================================= */
 
 // Get all available plans (public)
-router.get("/plans", getAllPlans);
+router.get("/plans",auth, getAllPlans);
 
 // Create subscription / Generate payment order
 router.post(

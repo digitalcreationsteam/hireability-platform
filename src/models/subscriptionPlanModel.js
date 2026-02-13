@@ -22,6 +22,12 @@ const subscriptionPlanSchema = new mongoose.Schema(
       required: true,
     },
 
+    features: {
+      type: [String], // Array of feature descriptions
+      required: true,
+      default: [],
+    },
+
     billingPeriod: {
       type: String,
       enum: ["monthly", "yearly", "oneTime"],

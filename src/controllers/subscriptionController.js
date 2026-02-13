@@ -1,5 +1,6 @@
 const Subscription = require("../models/subscriptionModel");
 const SubscriptionPlan = require("../models/subscriptionPlanModel");
+const User = require("../models/userModel");
 const crypto = require("crypto");
 
 // =====================================
@@ -186,17 +187,56 @@ exports.initiateDodoPayment = async (req, res) => {
 // =====================================
 // GET ALL PLANS
 // =====================================
+// exports.getAllPlans = async (req, res) => {
+//   try {
+//     const plans = await SubscriptionPlan.find()
+//       .sort({ order: 1 })
+//       .lean();
+
+//     res.status(200).json({
+//       success: true,
+//       count: plans.length,
+//       data: plans,
+//     });
+//   } catch (error) {
+//     console.error("❌ GET PLANS ERROR:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Unable to fetch plans",
+//     });
+//   }
+// };
+
 exports.getAllPlans = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find()
+    const userId = req.user?.id;
+
+    let currency = "USD"; // default currency
+
+    if (userId) {
+      const user = await User.findById(userId)
+        .select("country")
+        .lean();
+
+      if (user?.country === "IN") {
+        currency = "INR";
+      }
+    }
+
+    const plans = await SubscriptionPlan.find({
+      currency,
+      isActive: true,
+    })
       .sort({ order: 1 })
       .lean();
 
     res.status(200).json({
       success: true,
+      currency,
       count: plans.length,
       data: plans,
     });
+
   } catch (error) {
     console.error("❌ GET PLANS ERROR:", error);
     res.status(500).json({
