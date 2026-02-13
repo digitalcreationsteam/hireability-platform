@@ -204,6 +204,11 @@ exports.handleDodoWebhook = async (req, res) => {
       // Save subscription
       await subscription.save();
 
+      if (subscription.plan?.features) {
+        subscription.features = subscription.plan.features;
+        await subscription.save();
+      }
+
       console.log("✅ PAYMENT SUCCESS - Subscription activated:", {
         subscriptionId: subscription._id,
         orderId: subscription.dodoOrderId,
