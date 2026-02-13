@@ -293,7 +293,7 @@ exports.checkSubscriptionStatus = async (req, res) => {
     const { id } = req.params;
 
     const subscription = await Subscription.findById(id)
-      .select("status paymentStatus")
+      .select("status paymentStatus user")
       .lean();
 
     if (!subscription) {
@@ -308,6 +308,7 @@ exports.checkSubscriptionStatus = async (req, res) => {
       data: {
         status: subscription.status,
         paymentStatus: subscription.paymentStatus,
+        userId: subscription.user,
         isActive:
           subscription.status === "active" &&
           subscription.paymentStatus === "success",

@@ -11,6 +11,9 @@ const MongoStore = ConnectMongo.default ?? ConnectMongo;
 const path = require("path");
 const connectDB = require("./config/db");
 
+const universityRoutes = require("./routes/universityRoutes");
+
+
 const app = express();
 
 /* =======================
@@ -23,6 +26,7 @@ connectDB().then(() => {
   app.use(
     cors({
       origin: process.env.CLIENT_URL,
+      
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })
@@ -83,13 +87,21 @@ connectDB().then(() => {
   /* =======================
      Routes
   ======================= */
-  app.use("/api/auth", require("./routes/authRoutes"));
-  app.use("/api/user", require("./routes/userRoutes"));
-  app.use("/api/subscription", require("./routes/subscriptionRoutes"));
-  app.use("/api/admin", require("./routes/adminRoutes"));
-  app.use("/api/recruiter", require("./routes/recruiterRoutes"));
-  app.use("/api/cases", require("./routes/caseRoutes"));
-  app.use("/api/admin/cases" , require("./routes/adminCaseRoutes"));
+
+const API_PREFIX = process.env.NODE_ENV === "production" 
+  ? "/api" 
+  : "/dev-api";
+
+console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`📍 API Prefix: ${API_PREFIX}`);
+
+// Register all routes with the dynamic prefix
+app.use(`${API_PREFIX}/auth`, require("./routes/authRoutes"));
+app.use(`${API_PREFIX}/user`, require("./routes/userRoutes"));
+app.use(`${API_PREFIX}/subscription`, require("./routes/subscriptionRoutes"));
+app.use(`${API_PREFIX}/admin`, require("./routes/adminRoutes"));
+app.use(`${API_PREFIX}/recruiter`, require("./routes/recruiterRoutes"));
+app.use(`${API_PREFIX}/admin/cases`, require("./routes/caseRoutes"));
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
