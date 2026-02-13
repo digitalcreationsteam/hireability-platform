@@ -11,7 +11,7 @@ const MongoStore = ConnectMongo.default ?? ConnectMongo;
 const path = require("path");
 const connectDB = require("./config/db");
 
-const universityRoutes = require("./routes/universityRoutes");
+// const universityRoutes = require("./routes/universityRoutes");
 
 
 const app = express();
