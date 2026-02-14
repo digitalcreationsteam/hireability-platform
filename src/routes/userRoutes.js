@@ -182,6 +182,13 @@ router.delete(
   demographicsController.deleteDemographics
 );
 
+router.post(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.saveDemographics
+);
+
 // =================================================
 // EDUCATION (STUDENT)
 // =================================================
@@ -342,6 +349,14 @@ router.post(
   awardController.deleteAward
 );
 
+router.put(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.updateProject
+);
+
+
 // =================================================
 // PROJECTS (STUDENT)
 // =================================================
@@ -364,6 +379,13 @@ router.post(
   protect,
   authorizeRoles("student"),
   projectController.deleteProject
+);
+
+router.put(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.updateProject
 );
 
 
