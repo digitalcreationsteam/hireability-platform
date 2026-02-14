@@ -30,7 +30,7 @@ const sendEmail = async ({ to, subject, html }) => {
 
     // ✉️ SEND EMAIL
     const info = await transporter.sendMail({
-      from: `"Hireability Platform" <${process.env.EMAIL_USER}>`,
+      from: `"UNITALENT" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
