@@ -426,7 +426,7 @@ exports.signup = async (req, res) => {
       emailVerifyExpire: Date.now() + 15 * 60 * 1000,
     });
 
-    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+    const verifyUrl = `${process.env.CLIENT_URL}/verify/${verifyToken}`;
 
     await sendEmail({
       to: email,
@@ -577,7 +577,7 @@ exports.resendVerificationEmail = async (req, res) => {
     user.emailVerifyExpire = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+    const verifyUrl = `${process.env.CLIENT_URL}/verify/${verifyToken}`;
 
     await sendEmail({
       to: email,
