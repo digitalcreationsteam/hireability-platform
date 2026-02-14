@@ -414,4 +414,7 @@ router.post("/assessment/:attemptId/violation", protect, authorizeRoles("student
 // router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 
+// Get student data by school name
+router.get("/students", educationController.getStudentsBySchool);
+
 module.exports = router;

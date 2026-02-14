@@ -235,3 +235,36 @@ exports.getCaseReveal = async (req, res) => {
   }
 };
 
+// get cases solve in one week
+exports.getWeeklyAttempts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid userId" });
+    }
+
+    // Date 7 days ago
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    // Fetch attempts in last 7 days
+    const attempts = await UserCaseAttempt.find({
+      userId,
+      createdAt: { $gte: oneWeekAgo },
+    });
+
+    res.status(200).json({
+      success: true,
+      totalAttempts: attempts.length,
+      attempts, // optional: remove if only count needed
+    });
+  } catch (error) {
+    console.error("❌ Error fetching weekly attempts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

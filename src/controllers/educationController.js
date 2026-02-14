@@ -224,3 +224,36 @@ exports.deleteEducation = async (req, res) => {
     });
   }
 };
+
+exports.getStudentsBySchool = async (req, res) => {
+  try {
+    const { schoolName } = req.query;
+
+    if (!schoolName) {
+      return res.status(400).json({
+        success: false,
+        message: "School name is required",
+      });
+    }
+
+    // Find education records matching school name (case-insensitive)
+    const students = await Education.find({
+      schoolName: { $regex: schoolName, $options: "i" },
+    })
+      .populate("userId", "firstname lastname email avatar")
+      .sort({ educationScore: -1 })  // populate user details
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: students.length,
+      data: students,
+    });
+  } catch (error) {
+    console.error("❌ GET STUDENTS BY SCHOOL ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
