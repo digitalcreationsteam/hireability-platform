@@ -91,7 +91,7 @@ exports.adminSignup = async (req, res) => {
     });
 
     // 5. Send verification email
-    const verifyUrl = `${process.env.FRONTEND_URL}/verify/${verifyToken}`;
+    const verifyUrl = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
 
     await sendEmail({
       to: email,
