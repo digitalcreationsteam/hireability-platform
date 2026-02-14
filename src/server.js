@@ -108,12 +108,12 @@ app.use(
 // app.use(`${API_PREFIX}/admin/cases`, require("./routes/caseRoutes"));
 
 
-app.use(`api/auth`, require("./routes/authRoutes"));
-app.use(`api/user`, require("./routes/userRoutes"));
-app.use(`api/subscription`, require("./routes/subscriptionRoutes"));
-app.use(`api/admin`, require("./routes/adminRoutes"));
-app.use(`api/recruiter`, require("./routes/recruiterRoutes"));
-app.use(`api/admin/cases`, require("./routes/caseRoutes"));
+app.use('/api/auth', require("./routes/authRoutes"));
+app.use('/api/user', require("./routes/userRoutes"));
+app.use('/api/subscription', require("./routes/subscriptionRoutes"));
+app.use('/api/admin', require("./routes/adminRoutes"));
+app.use('/api/recruiter', require("./routes/recruiterRoutes"));
+app.use('/api/admin/cases', require("./routes/caseRoutes"));
 
 
   app.get("/", (req, res) => {
