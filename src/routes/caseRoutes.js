@@ -7,7 +7,8 @@ const {
   getCurrentQuestion,
   submitAnswer,
   submitAttempt,
-  getCaseReveal
+  getCaseReveal,
+  getWeeklyAttempts
 } = require("../controllers/caseController");
 
 const { protect } = require("../middlewares/authMiddleware");
@@ -25,5 +26,7 @@ router.post("/attempt/:attemptId/answer", protect,checkFeature("caseStudyAccess"
 router.post("/attempt/:attemptId/submit", protect,checkFeature("caseStudyAccess"), submitAttempt);
 // GET /api/cases/:caseId/reveal
 router.get("/:caseId/reveal", protect,checkFeature("caseStudyAccess"), getCaseReveal);
+// get how many case study solve in one week
+router.get("/:userId/weekly", protect, getWeeklyAttempts);
 
 module.exports = router;
