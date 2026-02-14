@@ -43,9 +43,11 @@ const demographicsSchema = new mongoose.Schema(
       default: false,
     },
 
-    city: String,
-    state: String,
-    country: String,
+    city: { type: String },
+    state:{ type: String },
+    country:{
+        type: String,
+    },
   },
   { timestamps: true }
 );

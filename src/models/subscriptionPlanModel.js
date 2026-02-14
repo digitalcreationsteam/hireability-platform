@@ -22,6 +22,17 @@ const subscriptionPlanSchema = new mongoose.Schema(
       required: true,
     },
 
+    // features: {
+    //   type: [String], // Array of feature descriptions
+    //   required: true,
+    //   default: [],
+    // },
+
+    features: {
+      hackathonAccess: { type: Boolean, default: false },
+      caseStudyAccess: { type: Boolean, default: false },
+    },
+
     billingPeriod: {
       type: String,
       enum: ["monthly", "yearly", "oneTime"],
