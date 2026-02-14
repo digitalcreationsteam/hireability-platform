@@ -167,6 +167,12 @@ router.get(
   universityController.searchUniversities
 );
 
+router.post(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.saveDemographics
+);
 
 router.get(
   "/demographics",

@@ -88,7 +88,7 @@ exports.createEducation = async (req, res) => {
       });
     }
 
-    // Attach userId + calculate score for each education
+    // Attach userId + calculate score
     const educationDocs = educations.map((edu) => ({
       ...edu,
       userId,
@@ -97,6 +97,21 @@ exports.createEducation = async (req, res) => {
 
     const savedEducations = await Education.insertMany(educationDocs);
 
+    // ✅ Get latest school name (first added education)
+    const latestSchoolName = savedEducations[0]?.schoolName || null;
+
+    // ✅ Update only schoolName in UserScore
+    await UserScore.findOneAndUpdate(
+      { userId },
+      { 
+        $set: { university: latestSchoolName }
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    );
+
     const totalScore = await updateUserEducationScore(userId);
 
     return res.status(201).json({
@@ -104,6 +119,7 @@ exports.createEducation = async (req, res) => {
       educationScore: totalScore,
       data: savedEducations,
     });
+
   } catch (error) {
     return res.status(500).json({
       message: "Error creating educations",
@@ -111,6 +127,7 @@ exports.createEducation = async (req, res) => {
     });
   }
 };
+
 
 /* ==================================================
    GET ALL EDUCATIONS
