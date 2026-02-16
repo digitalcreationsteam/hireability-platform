@@ -7,23 +7,26 @@ const {
   getCurrentQuestion,
   submitAnswer,
   submitAttempt,
-  getCaseReveal
+  getCaseReveal,
+  getWeeklyAttempts
 } = require("../controllers/caseController");
 
 const { protect } = require("../middlewares/authMiddleware");
 const checkFeature = require("../middlewares/checkFeature");
 
 // GET /api/cases
-router.get("/", protect, checkFeature("caseStudyAccess"), getAllCases);
+router.get("/", protect, getAllCases);
 // POST /api/cases/:caseId/start
-router.post("/:caseId/start", protect,checkFeature("caseStudyAccess"), startCase);
+router.post("/:caseId/start", protect, startCase);
 // GET /api/cases/attempt/:attemptId/question
-router.get("/attempt/:attemptId/question", protect,checkFeature("caseStudyAccess"), getCurrentQuestion);
+router.get("/attempt/:attemptId/question", protect, getCurrentQuestion);
 // POST /api/cases/attempt/:attemptId/answer
-router.post("/attempt/:attemptId/answer", protect,checkFeature("caseStudyAccess"), submitAnswer);
+router.post("/attempt/:attemptId/answer", protect, submitAnswer);
 // POST /api/cases/attempt/:attemptId/submit
-router.post("/attempt/:attemptId/submit", protect,checkFeature("caseStudyAccess"), submitAttempt);
+router.post("/attempt/:attemptId/submit",protect, submitAttempt);
 // GET /api/cases/:caseId/reveal
-router.get("/:caseId/reveal", protect,checkFeature("caseStudyAccess"), getCaseReveal);
+router.get("/:caseId/reveal", protect, getCaseReveal);
+// get how many case study solve in one week
+router.get("/:userId/weekly", protect, getWeeklyAttempts);
 
 module.exports = router;

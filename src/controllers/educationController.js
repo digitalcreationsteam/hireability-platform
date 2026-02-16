@@ -1,10 +1,8 @@
 const Education = require("../models/educationModel");
 const User = require("../models/userModel");
 const { recalculateUserScore } = require("../services/recalculateUserScore");
-const { calculateNavigation, getCompletionStatus } = require("./authController");
-
-/* ==========const { calculateNavigation, getCompletionStatus } = require("./authController");
-========================================
+const UserScore = require("../models/userScoreModel");
+/* ==================================================
    SINGLE EDUCATION SCORE CALCULATION
 ================================================== */
 const calculateSingleEducationScore = (edu) => {
@@ -90,7 +88,7 @@ exports.createEducation = async (req, res) => {
       });
     }
 
-    // Attach userId + calculate score for each education
+    // Attach userId + calculate score
     const educationDocs = educations.map((edu) => ({
       ...edu,
       userId,
@@ -98,6 +96,21 @@ exports.createEducation = async (req, res) => {
     }));
 
     const savedEducations = await Education.insertMany(educationDocs);
+
+    // ✅ Get latest school name (first added education)
+    const latestSchoolName = savedEducations[0]?.schoolName || null;
+
+    // ✅ Update only schoolName in UserScore
+    await UserScore.findOneAndUpdate(
+      { userId },
+      {
+        $set: { university: latestSchoolName }
+      },
+      {
+        upsert: true,
+        new: true,
+      }
+    );
 
     const totalScore = await updateUserEducationScore(userId);
     const completionStatus = await getCompletionStatus(userId);
@@ -109,6 +122,7 @@ exports.createEducation = async (req, res) => {
       data: savedEducations,
       navigation,
     });
+
   } catch (error) {
     return res.status(500).json({
       message: "Error creating educations",
@@ -116,6 +130,7 @@ exports.createEducation = async (req, res) => {
     });
   }
 };
+
 
 /* ==================================================
    GET ALL EDUCATIONS
@@ -226,6 +241,39 @@ exports.deleteEducation = async (req, res) => {
     return res.status(500).json({
       message: "Error deleting education",
       error: error.message,
+    });
+  }
+};
+
+exports.getStudentsBySchool = async (req, res) => {
+  try {
+    const { schoolName } = req.query;
+
+    if (!schoolName) {
+      return res.status(400).json({
+        success: false,
+        message: "School name is required",
+      });
+    }
+
+    // Find education records matching school name (case-insensitive)
+    const students = await Education.find({
+      schoolName: { $regex: schoolName, $options: "i" },
+    })
+      .populate("userId", "firstname lastname email avatar")
+      .sort({ educationScore: -1 })  // populate user details
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: students.length,
+      data: students,
+    });
+  } catch (error) {
+    console.error("❌ GET STUDENTS BY SCHOOL ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
     });
   }
 };

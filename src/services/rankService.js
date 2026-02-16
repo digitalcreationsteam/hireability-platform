@@ -57,4 +57,22 @@ exports.recalculateRanks = async () => {
       );
     }
   }
+  
+  /* 🔹 UNIVERSITY RANK */
+  const universities = await UserScore.distinct("university");
+
+  for (const university of universities) {
+    if (!university) continue; // skip null/empty
+
+    const users = await UserScore.find({ university })
+      .sort({ hireabilityIndex: -1 });
+
+    for (let i = 0; i < users.length; i++) {
+      await UserScore.updateOne(
+        { _id: users[i]._id },
+        { universityRank: i + 1 }
+      );
+    }
+  }
+  
 };
