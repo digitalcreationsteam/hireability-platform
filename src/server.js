@@ -25,8 +25,12 @@ connectDB().then(() => {
   ======================= */
   app.use(
     cors({
-      origin: process.env.CLIENT_URL,
-
+      // origin: process.env.CLIENT_URL,
+      origin: [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://192.168.0.104:3000", // Add your frontend IP if accessing from other devices
+      ],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })
@@ -113,6 +117,7 @@ connectDB().then(() => {
      Server
   ======================= */
   const PORT = process.env.PORT || 5000;
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });

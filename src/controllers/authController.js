@@ -1,4 +1,5 @@
 // controllers/authController.js - FIXED VERSION
+const mongoose = require("mongoose");
 
 const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
@@ -24,7 +25,6 @@ const verifyEmailTemplate = require("../utils/verifyEmail");
 // REMOVED: skill-index-intro, assessment-intro (frontend-only)
 // These are auto-skipped, not tracked in database
 const STEP_SEQUENCE = [
-  "paywall",
   "resume",
   "demographics",
   "education",
@@ -34,6 +34,7 @@ const STEP_SEQUENCE = [
   "projects",
   "job-domain",
   "skills",
+  "paywall",        // ✅ MOVED HERE - after skills
   "assessment",
   "assessment-results",
 ];
@@ -51,8 +52,24 @@ const FRONTEND_ONLY_STEPS = [
 // HELPER: Get completion status from database
 // ============================================
 const getCompletionStatus = async (userId) => {
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("🔍 getCompletionStatus - Input userId:", userId);
+  console.log("🔍 userId type:", typeof userId);
+
+  // ✅ Ensure userId is ObjectId
+  let objectId;
+  if (mongoose.Types.ObjectId.isValid(userId)) {
+    objectId = userId instanceof mongoose.Types.ObjectId
+      ? userId
+      : new mongoose.Types.ObjectId(userId);
+  } else {
+    throw new Error("Invalid userId format");
+  }
+
+  console.log("🔍 Converted to ObjectId:", objectId);
+
   const [
-    userDocument, //for resume
+    userDocument,
     demographics,
     education,
     experience,
@@ -63,20 +80,43 @@ const getCompletionStatus = async (userId) => {
     userDomainSkill,
     assessment,
   ] = await Promise.all([
-    UserDocument.findOne({ userId }), //for resume
-    Demographics.findOne({ userId }),
-    Education.findOne({ userId }),
-    Experience.findOne({ userId }),
-    Certification.findOne({ userId }),
-    Award.findOne({ userId }),
-    Project.findOne({ userId }),
-    Subscription.findOne({ user: userId, status: "active" }),
-    UserDomainSkill.findOne({ userId }),
-    SkillAssessment.findOne({ userId }),
+    UserDocument.findOne({ userId: objectId }),
+    Demographics.findOne({ userId: objectId }),
+    Education.findOne({ userId: objectId }),
+    Experience.findOne({ userId: objectId }),
+    Certification.findOne({ userId: objectId }),
+    Award.findOne({ userId: objectId }),
+    Project.findOne({ userId: objectId }),
+    Subscription.findOne({ user: objectId, status: "active" }),
+    UserDomainSkill.findOne({ userId: objectId }),
+    SkillAssessment.findOne({ userId: objectId }),
   ]);
 
-  return {
-    paywall: !!subscription, // ✅ THIS IS THE KEY
+  console.log("📄 UserDocument found:", !!userDocument);
+  if (userDocument) {
+    console.log("📄 UserDocument details:", {
+      _id: userDocument._id,
+      userId: userDocument.userId,
+      resumeUrl: userDocument.resumeUrl,
+      resumeOriginalName: userDocument.resumeOriginalName,
+    });
+  } else {
+    console.log("❌ NO UserDocument found for userId:", objectId);
+
+    // Debug: Check what's in the database
+    const count = await UserDocument.countDocuments();
+    console.log("📊 Total UserDocuments in database:", count);
+
+    if (count > 0) {
+      const sample = await UserDocument.findOne();
+      console.log("📄 Sample document userId type:", typeof sample.userId);
+      console.log("📄 Sample document userId:", sample.userId);
+    }
+  }
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  const status = {
+    paywall: !!subscription,
     resume: !!userDocument?.resumeUrl,
     demographics: !!demographics,
     education: !!education,
@@ -84,13 +124,14 @@ const getCompletionStatus = async (userId) => {
     certifications: !!certifications,
     awards: !!awards,
     projects: !!projects,
-    // "job-domain": !!userDomainSkill?.domainId && !!userDomainSkill?.subDomainId,
     "job-domain": !!userDomainSkill?.domainId,
-
     skills: (userDomainSkill?.skills?.length || 0) > 0,
     assessment: !!assessment?.startedAt && !assessment?.completedAt,
     "assessment-results": !!assessment?.completedAt,
   };
+
+  console.log("✅ Completion status:", status);
+  return status;
 };
 
 // ================= NAVIGATION =================
@@ -153,8 +194,19 @@ const calculateNavigation = (status) => {
   // ✅ Normal onboarding flow
   const currentStep = STEP_SEQUENCE.find((step) => !status[step]);
 
+  // If all steps are completed but not assessment-results, 
+  // they should go to assessment-results
+  if (!currentStep) {
+    return {
+      nextRoute: "/assessment-results",
+      currentStep: "assessment-results",
+      completedSteps: STEP_SEQUENCE,
+      hasPayment: status.paywall,
+      isOnboardingComplete: false,
+    };
+  }
+
   const stepToRoute = {
-    paywall: "/paywall",
     resume: "/upload-resume",
     demographics: "/demographics",
     education: "/education",
@@ -164,10 +216,10 @@ const calculateNavigation = (status) => {
     projects: "/projects",
     "job-domain": "/job-domain",
     skills: "/skills",
+    paywall: "/paywall",
     assessment: "/assessment",
     "assessment-results": "/assessment-results",
   };
-
   return {
     nextRoute: stepToRoute[currentStep],
     currentStep,
@@ -179,15 +231,29 @@ const calculateNavigation = (status) => {
 
 // ================= GET USER STATUS =================
 exports.getUserStatus = async (req, res) => {
-  const userId = req.user._id;
+  try {
+    const userId = req.user._id || req.user.id;
 
-  const status = await getCompletionStatus(userId);
-  const navigation = calculateNavigation(status);
+    console.log("🔍 getUserStatus called for userId:", userId);
+    console.log("🔍 userId type:", typeof userId);
 
-  res.status(200).json({
-    success: true,
-    navigation,
-  });
+    const status = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(status);
+
+    console.log("📊 Status:", status);
+    console.log("📊 Navigation:", navigation);
+
+    res.status(200).json({
+      success: true,
+      navigation,
+    });
+  } catch (error) {
+    console.error("❌ getUserStatus error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user status",
+    });
+  }
 };
 
 // ============================================
@@ -283,7 +349,7 @@ exports.checkEmailVerification = async (req, res) => {
 
     res.json({
       success: true,
-      userId:user.id,
+      userId: user.id,
       isVerified: user.isVerified,
     });
   } catch (err) {
@@ -295,6 +361,7 @@ exports.checkEmailVerification = async (req, res) => {
 // ============================================
 // VERIFY ROUTE - Optional security check
 // ============================================
+// authController.js - Fix verifyRouteEndpoint
 exports.verifyRouteEndpoint = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
@@ -327,22 +394,57 @@ exports.verifyRouteEndpoint = async (req, res) => {
       });
     }
 
-    // const isAllowed = navigation.nextRoute === requestedRoute;
+    // Calculate allowed routes based on current step
+    const currentStepIndex = STEP_SEQUENCE.indexOf(navigation.currentStep);
 
-    const currentRoute =
-      navigation.currentStep && navigation.currentStep !== "completed"
-        ? `/${navigation.currentStep}`
-        : null;
+    // Allowed routes:
+    // 1. Current step route
+    // 2. Next step route (for forward navigation)
+    // 3. Previous completed steps (for backward navigation)
+    const allowedRoutes = [];
 
-    const allowedRoutes = [navigation.nextRoute, currentRoute].filter(Boolean);
+    // Add current step
+    if (navigation.currentStep) {
+      allowedRoutes.push(`/${navigation.currentStep}`);
+    }
 
-    const isAllowed = allowedRoutes.includes(requestedRoute);
+    // Add next step
+    if (navigation.nextRoute) {
+      allowedRoutes.push(navigation.nextRoute);
+    }
+
+    // Add all previous completed steps (allow going back)
+    const completedSteps = STEP_SEQUENCE.filter((step, index) =>
+      index < currentStepIndex && status[step]
+    );
+
+    completedSteps.forEach(step => {
+      allowedRoutes.push(`/${step}`);
+    });
+
+    // Remove duplicates
+    const uniqueAllowedRoutes = [...new Set(allowedRoutes)];
+
+    // Special case: If paywall is the current step, allow access
+    if (navigation.currentStep === "paywall") {
+      uniqueAllowedRoutes.push("/paywall");
+    }
+
+    const isAllowed = uniqueAllowedRoutes.includes(requestedRoute);
+
+    console.log("📍 Route verification:", {
+      requested: requestedRoute,
+      allowed: isAllowed,
+      currentStep: navigation.currentStep,
+      allowedRoutes: uniqueAllowedRoutes
+    });
 
     res.status(200).json({
       success: true,
       allowed: isAllowed,
       nextRoute: navigation.nextRoute,
       currentStep: navigation.currentStep,
+      allowedRoutes: uniqueAllowedRoutes, // Send to frontend for hydration
     });
   } catch (error) {
     console.error("❌ verifyRouteEndpoint error:", error);

@@ -181,14 +181,12 @@ router.delete(
   authorizeRoles("student"),
   demographicsController.deleteDemographics
 );
-
 router.post(
   "/demographics",
   protect,
   authorizeRoles("student"),
   demographicsController.saveDemographics
 );
-
 // =================================================
 // EDUCATION (STUDENT)
 // =================================================

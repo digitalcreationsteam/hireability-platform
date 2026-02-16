@@ -1,12 +1,21 @@
+// controllers/demographicsController.js
 const Demographics = require("../models/demographicsModel");
 const UserScore = require("../models/userScoreModel");
+const { calculateNavigation, getCompletionStatus } = require("./authController");
 
+// ============================================
+// SAVE/UPDATE DEMOGRAPHICS
+// ============================================
 exports.saveDemographics = async (req, res) => {
   try {
-    const userId = req.headers["user-id"];
+    // ✅ Support both header and req.user (from auth middleware)
+    const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
 
     if (!userId) {
-      return res.status(400).json({ message: "User ID missing in header" });
+      return res.status(400).json({
+        success: false,
+        message: "User ID missing in header",
+      });
     }
 
     const {
@@ -19,6 +28,14 @@ exports.saveDemographics = async (req, res) => {
       phoneVisibleToRecruiters,
     } = req.body;
 
+    // Validation
+    if (!fullName || !email || !city || !state || !country) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      });
+    }
+
     // 🔒 Manual uniqueness check (for clean error messages)
     if (email) {
       const emailExists = await Demographics.findOne({
@@ -28,6 +45,7 @@ exports.saveDemographics = async (req, res) => {
 
       if (emailExists) {
         return res.status(409).json({
+          success: false,
           message: "Email already in use",
         });
       }
@@ -41,12 +59,13 @@ exports.saveDemographics = async (req, res) => {
 
       if (phoneExists) {
         return res.status(409).json({
+          success: false,
           message: "Phone number already in use",
         });
       }
     }
 
-    // ✅ CREATE OR UPDATE
+    // ✅ CREATE OR UPDATE Demographics
     const demographics = await Demographics.findOneAndUpdate(
       { userId },
       {
@@ -61,10 +80,11 @@ exports.saveDemographics = async (req, res) => {
       {
         new: true,
         upsert: true,
-        runValidators: true, // ⭐ important
-      },
+        runValidators: true,
+      }
     );
 
+    // ✅ UPDATE UserScore location
     await UserScore.findOneAndUpdate(
       { userId },
       {
@@ -75,63 +95,100 @@ exports.saveDemographics = async (req, res) => {
       {
         upsert: true,
         new: true,
-      },
+      }
     );
 
+    // ✅ GET UPDATED NAVIGATION STATUS
+    const completionStatus = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(completionStatus);
+
+    // ✅ RETURN DATA + NAVIGATION
     res.status(200).json({
-      message: "Demographics saved and UserScore location updated",
+      success: true,
+      message: "Demographics saved successfully",
       data: demographics,
+      navigation, // ← CRITICAL: Frontend expects this
     });
   } catch (err) {
+    console.error("❌ Save demographics error:", err);
+
     // 🧠 Mongo duplicate key fallback
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
       return res.status(409).json({
+        success: false,
         message: `${field} already exists`,
       });
     }
 
-    res.status(400).json({
-      message: err.message,
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to save demographics",
     });
   }
 };
 
-// READ
+// ============================================
+// GET DEMOGRAPHICS
+// ============================================
 exports.getDemographicsByUser = async (req, res) => {
   try {
-    // Get userId from header
-    const userId = req.headers["user-id"]; // or 'userid' based on your header key
+    // Get userId from header or auth middleware
+    const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
 
     if (!userId) {
-      return res.status(400).json({ error: "User ID is required in headers" });
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required in headers",
+      });
     }
 
-    const demographics = await Demographics.findOne({
-      userId: userId,
-    });
+    const demographics = await Demographics.findOne({ userId });
 
-    // if (!demographics) {
-    //   return res.status(404).json({ message: "Demographics not found" });
-    // }
+    // ✅ Return null if not found (not an error for first-time users)
     return res.status(200).json({
       success: true,
       data: demographics || null,
     });
-
-    // res.status(200).json(demographics);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Get demographics error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to fetch demographics",
+    });
   }
 };
 
-// DELETE (Optional)
+// ============================================
+// DELETE DEMOGRAPHICS
+// ============================================
 exports.deleteDemographics = async (req, res) => {
   try {
-    const userId = req.headers["user-id"];
+    const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID missing",
+      });
+    }
+
     await Demographics.findOneAndDelete({ userId });
-    res.json({ message: "Demographics deleted" });
+
+    // ✅ GET UPDATED NAVIGATION (user lost this step)
+    const completionStatus = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(completionStatus);
+
+    res.status(200).json({
+      success: true,
+      message: "Demographics deleted successfully",
+      navigation, // ← Frontend can update Redux
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Delete demographics error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to delete demographics",
+    });
   }
 };

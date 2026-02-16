@@ -1,8 +1,10 @@
 const Education = require("../models/educationModel");
 const User = require("../models/userModel");
 const { recalculateUserScore } = require("../services/recalculateUserScore");
+const { calculateNavigation, getCompletionStatus } = require("./authController");
 
-/* ==================================================
+/* ==========const { calculateNavigation, getCompletionStatus } = require("./authController");
+========================================
    SINGLE EDUCATION SCORE CALCULATION
 ================================================== */
 const calculateSingleEducationScore = (edu) => {
@@ -98,11 +100,14 @@ exports.createEducation = async (req, res) => {
     const savedEducations = await Education.insertMany(educationDocs);
 
     const totalScore = await updateUserEducationScore(userId);
+    const completionStatus = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(completionStatus);
 
     return res.status(201).json({
       message: "Educations added successfully",
       educationScore: totalScore,
       data: savedEducations,
+      navigation,
     });
   } catch (error) {
     return res.status(500).json({
