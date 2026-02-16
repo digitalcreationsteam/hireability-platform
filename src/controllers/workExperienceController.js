@@ -1,6 +1,7 @@
 const WorkExperience = require("../models/workModel");
 const User = require("../models/userModel");
 const { recalculateUserScore } = require("../services/recalculateUserScore");
+const { calculateNavigation, getCompletionStatus } = require("./authController");
 
 /* --------------------------------------------------
    SCORE CALCULATION (SINGLE EXPERIENCE)
@@ -102,12 +103,15 @@ exports.createMultipleWorkExperience = async (req, res) => {
     const insertedWork = await WorkExperience.insertMany(workDocs);
 
     const totalScore = await updateUserWorkScore(userId);
-
+    const completionStatus = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(completionStatus);
     return res.status(201).json({
       message: "Work experiences added successfully",
       totalAdded: insertedWork.length,
       totalWorkScore: totalScore,
       data: insertedWork,
+      navigation, // ← Frontend can update Redux
+
     });
 
   } catch (error) {
