@@ -20,6 +20,9 @@ const userScoreSchema = new mongoose.Schema({
   global: String,
   globalRank: Number,
 
+  university: String,
+  universityRank: Number,
+
   educationScore: { type: Number, default: 0 },
   workScore: { type: Number, default: 0 },
   certificationScore: { type: Number, default: 0 },

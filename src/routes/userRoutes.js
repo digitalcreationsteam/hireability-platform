@@ -167,6 +167,12 @@ router.get(
   universityController.searchUniversities
 );
 
+router.post(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.saveDemographics
+);
 
 router.get(
   "/demographics",
@@ -349,6 +355,14 @@ router.post(
   awardController.deleteAward
 );
 
+router.put(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.updateProject
+);
+
+
 // =================================================
 // PROJECTS (STUDENT)
 // =================================================
@@ -371,6 +385,13 @@ router.post(
   protect,
   authorizeRoles("student"),
   projectController.deleteProject
+);
+
+router.put(
+  "/projects/:id",
+  protect,
+  authorizeRoles("student"),
+  projectController.updateProject
 );
 
 
@@ -424,5 +445,8 @@ router.post("/assessment/:attemptId/violation", protect, authorizeRoles("student
 // router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
 // router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
+
+// Get student data by school name
+router.get("/students", educationController.getStudentsBySchool);
 
 module.exports = router;
