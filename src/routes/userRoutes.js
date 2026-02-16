@@ -21,7 +21,7 @@ const awardController = require("../controllers/awardController");
 const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
 const userDocumentController = require("../controllers/userDocumentController");
-const universityController =  require("../controllers/universityController");
+const universityController = require("../controllers/universityController");
 
 
 
@@ -180,6 +180,13 @@ router.delete(
   protect,
   authorizeRoles("student"),
   demographicsController.deleteDemographics
+);
+
+router.post(
+  "/demographics",
+  protect,
+  authorizeRoles("student"),
+  demographicsController.saveDemographics
 );
 
 // =================================================
