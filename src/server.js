@@ -113,7 +113,8 @@ app.use('/api/user', require("./routes/userRoutes"));
 app.use('/api/subscription', require("./routes/subscriptionRoutes"));
 app.use('/api/admin', require("./routes/adminRoutes"));
 app.use('/api/recruiter', require("./routes/recruiterRoutes"));
-app.use('/api/admin/cases', require("./routes/caseRoutes"));
+app.use('/api/cases', require("./routes/caseRoutes"));
+app.use('/api/admin/cases', require("./routes/adminCaseRoutes"));
 
 
   app.get("/", (req, res) => {
