@@ -1,45 +1,40 @@
-const mongoose = require("mongoose");
+// models/CaseStudy.js
 
-const caseStudySchema = new mongoose.Schema({
-  caseCode: {
-    type: String,
-    required: true,
-    unique: true,   // 🔥 very important
-    uppercase: true,
-    trim: true
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  description: String,
-  
-  domainId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Domain",
-      required: true,
-      index: true,
+const mongoose = require("mongoose")
+
+const caseStudySchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true
     },
-
-    // 🔥 DOMAIN SNAPSHOT (denormalized)
-    domainName: {
+    slug: {
       type: String,
       required: true,
-      trim: true,
+      unique: true
     },
-
-  totalQuestions: {
-    type: Number,
-    default: 10
+    openingImageUrl: {
+      type: String,
+      required: true
+    },
+    revealImageUrl: {
+      type: String,
+      required: true
+    },
+    totalQuestions: {
+      type: Number,
+      default: 10
+    },
+    maxAttempts: {
+      type: Number,
+      default: 2
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
   },
-  maxAttempts: {
-    type: Number,
-    default: 2
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-}, { timestamps: true });
+  { timestamps: true }
+)
 
-module.exports = mongoose.model("CaseStudy", caseStudySchema);
+module.exports = mongoose.model("CaseStudy", caseStudySchema)
