@@ -414,4 +414,17 @@ router.post("/assessment/:attemptId/violation", protect, authorizeRoles("student
 // router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
 
 
+
+// =================================================
+// MY PROFILE (STUDENT)
+// =================================================
+
+router.get(
+  "/my-profile",
+  protect,
+  authorizeRoles("student"),
+  getDashboardByUserId
+)
+
+
 module.exports = router;
