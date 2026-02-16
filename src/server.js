@@ -25,8 +25,12 @@ connectDB().then(() => {
   ======================= */
   app.use(
     cors({
-      origin: process.env.CLIENT_URL,
-      
+      // origin: process.env.CLIENT_URL,
+      origin: [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://192.168.0.104:3000", // Add your frontend IP if accessing from other devices
+      ],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })
@@ -88,21 +92,21 @@ connectDB().then(() => {
      Routes
   ======================= */
 
-const API_PREFIX = process.env.NODE_ENV === "production" 
-  ? "/api" 
-  : "/dev-api";
+// const API_PREFIX = process.env.NODE_ENV === "production" 
+//   ? "/api" 
+//   : "/dev-api";
 
-console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`📍 API Prefix: ${API_PREFIX}`);
+// console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// console.log(`📍 API Prefix: ${API_PREFIX}`);
 
 // Register all routes with the dynamic prefix
-app.use(`${API_PREFIX}/auth`, require("./routes/authRoutes"));
-app.use(`${API_PREFIX}/user`, require("./routes/userRoutes"));
-app.use(`${API_PREFIX}/subscription`, require("./routes/subscriptionRoutes"));
-app.use(`${API_PREFIX}/admin`, require("./routes/adminRoutes"));
-app.use(`${API_PREFIX}/recruiter`, require("./routes/recruiterRoutes"));
-app.use(`${API_PREFIX}/admin/cases`, require("./routes/adminCaseRoutes"));
-app.use(`${API_PREFIX}/cases`, require("./routes/caseRoutes"));
+app.use(`/api/auth`, require("./routes/authRoutes"));
+app.use(`/api/user`, require("./routes/userRoutes"));
+app.use(`/api/subscription`, require("./routes/subscriptionRoutes"));
+app.use(`/api/admin`, require("./routes/adminRoutes"));
+app.use(`/api/recruiter`, require("./routes/recruiterRoutes"));
+app.use(`/api/admin/cases`, require("./routes/adminCaseRoutes"));
+app.use(`/api/cases`, require("./routes/caseRoutes"));
 
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
@@ -112,7 +116,8 @@ app.use(`${API_PREFIX}/cases`, require("./routes/caseRoutes"));
   /* =======================
      Server
   ======================= */
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 5002;
+  
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
