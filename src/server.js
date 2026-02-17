@@ -117,6 +117,7 @@ connectDB().then(() => {
   app.use('/api/admin/cases', require("./routes/adminCaseRoutes"));
 
 
+
   app.get("/", (req, res) => {
     res.json({ status: "OK", message: "Server is running" });
   });

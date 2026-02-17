@@ -10,14 +10,16 @@ const crypto = require("crypto");
 // Import controller functions ONE BY ONE to avoid any import issues
 const signup = require("../controllers/authController").signup;
 const login = require("../controllers/authController").login;
+const verifyOTP = require("../controllers/authController").verifyOTP;
+const resendOTP = require("../controllers/authController").resendOTP;
 const verifyEmail = require("../controllers/authController").verifyEmail;
 const resendVerificationEmail = require("../controllers/authController").resendVerificationEmail;
 const logout = require("../controllers/authController").logout;
 const getUserStatus = require("../controllers/authController").getUserStatus;
 const verifyRouteEndpoint = require("../controllers/authController").verifyRouteEndpoint;
 const checkEmailVerification = require("../controllers/authController").checkEmailVerification;
-
-
+const otpEmailTemplate = require("./../utils/otpEmailTemplate")
+const sendEmail = require("./../utils/sendEmail");
 
 // Import forgot password functions if they exist
 let forgotPasswordNew, verifyResetCode, resetPasswordNew;
@@ -42,10 +44,33 @@ const generateToken = require("../utils/generateToken");
 router.post("/signup", signup);
 router.post("/login", login);
 router.post("/logout", logout);
+// TEMPORARY DEBUG ROUTE - Remove after debugging
+router.get('/debug-user/:email', async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      email: user.email,
+      isVerified: user.isVerified,
+      hasOTP: !!user.otp,
+      otp: user.otp, // Show OTP for debugging
+      otpExpiry: user.otpExpiry,
+      createdAt: user.createdAt
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /* ✅ EMAIL VERIFICATION */
-router.get("/verify/:token", verifyEmail);
-router.post("/resend-verification", resendVerificationEmail);
+// router.get("/verify/:token", verifyEmail);
+// router.post("/resend-verification", resendVerificationEmail);
+
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
 
 /* ✅ NAVIGATION STATUS (Protected routes) */
 router.get("/user-status", auth, getUserStatus);
@@ -118,7 +143,7 @@ router.get("/linkedin", (req, res) => {
   });
 
   const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
- // console.log("🔗 Redirecting to:", linkedInAuthUrl);
+  // console.log("🔗 Redirecting to:", linkedInAuthUrl);
   res.redirect(linkedInAuthUrl);
 });
 
@@ -158,32 +183,32 @@ router.get("/linkedin/callback", async (req, res) => {
     /* Find or create user */
     let user = await User.findOne({ linkedinId: sub });
 
-// 1️⃣ If not found by linkedinId, try email
-if (!user && email) {
-  user = await User.findOne({ email });
+    // 1️⃣ If not found by linkedinId, try email
+    if (!user && email) {
+      user = await User.findOne({ email });
 
-  // If user exists by email → link LinkedIn
-  if (user) {
-    user.linkedinId = sub;
-    user.socialLogin = "linkedin";
-    await user.save();
-  }
-}
+      // If user exists by email → link LinkedIn
+      if (user) {
+        user.linkedinId = sub;
+        user.socialLogin = "linkedin";
+        await user.save();
+      }
+    }
 
-// 2️⃣ If still no user → create new
-if (!user) {
-  user = await User.create({
-    firstname: given_name || "LinkedIn",
-    lastname: family_name || "User",
-    email: email || `linkedin_${sub}_${Date.now()}@temp.local`,
-    password: crypto.randomBytes(32).toString("hex"),
-    role: "student",
-    socialLogin: "linkedin",
-    linkedinId: sub,
-    isVerified: !!email,
-  });
-}
-    
+    // 2️⃣ If still no user → create new
+    if (!user) {
+      user = await User.create({
+        firstname: given_name || "LinkedIn",
+        lastname: family_name || "User",
+        email: email || `linkedin_${sub}_${Date.now()}@temp.local`,
+        password: crypto.randomBytes(32).toString("hex"),
+        role: "student",
+        socialLogin: "linkedin",
+        linkedinId: sub,
+        isVerified: !!email,
+      });
+    }
+
     /* No email → ask user to complete profile */
     if (!email) {
       return res.redirect(
@@ -196,7 +221,7 @@ if (!user) {
     await user.save();
 
     const token = generateToken(user._id);
-    
+
     // Prepare user data with token
     const userData = {
       id: user._id,
@@ -207,10 +232,10 @@ if (!user) {
       isVerified: user.isVerified,
       socialLogin: user.socialLogin,
     };
-    
+
     // Encode user data in base64 for URL
     const userDataBase64 = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
-    
+
     res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}&user=${userDataBase64}`);
   } catch (error) {
     console.error("❌ LinkedIn OAuth error:", error);
