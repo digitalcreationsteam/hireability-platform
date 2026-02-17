@@ -25,11 +25,11 @@ connectDB().then(() => {
   ======================= */
   app.use(
     cors({
-      // origin: process.env.CLIENT_URL,
       origin: [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://192.168.0.104:3000", // Add your frontend IP if accessing from other devices
+        process.env.CLIENT_URL,                    // https://unitalent.cloud
+        'https://admin.unitalent.cloud',           // ✅ Production admin
+        'https://dev.unitalent.cloud',             // ✅ Development frontend
+        'https://admin-dev.unitalent.cloud'        // ✅ Development admin
       ],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
