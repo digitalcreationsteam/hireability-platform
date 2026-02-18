@@ -1832,7 +1832,7 @@ router.get(
 );
 
 router.post(
-  '/work',
+  '/experience',
   protect,
   authorizeRoles("student"),
   createWorkExperience
