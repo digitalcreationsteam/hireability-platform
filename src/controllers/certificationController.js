@@ -36,7 +36,7 @@ const updateUserCertificationScore = async (userId) => {
 exports.createCertification = async (req, res) => {
   try {
     const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
-    
+
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -49,7 +49,7 @@ exports.createCertification = async (req, res) => {
     const incomingCount = Array.isArray(req.body.certificationName)
       ? req.body.certificationName.length
       : 1;
-    
+
     if (existingCount + incomingCount > 5) {
       return res.status(400).json({
         success: false,

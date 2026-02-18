@@ -34,7 +34,7 @@ const updateUserProjectScore = async (userId) => {
 exports.createMultipleProjects = async (req, res) => {
   try {
     const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
-    
+
     if (!userId) {
       return res.status(400).json({
         success: false,
