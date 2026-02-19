@@ -2166,8 +2166,24 @@ router.get(
   assessmentController.getLatestResult
 );
 
-router.post(
-  "/assessment/:attemptId/violation",
+
+router.post("/assessment/violation/:attemptId", protect, authorizeRoles("student"), assessmentController.reportViolation);
+// router.get("/assessment/:attemptId/integrity",protect,  authorizeRoles("student"),  assessmentController.getIntegrity);
+
+// Assessment (STUDENT)
+// =================================================
+// router.post("/schedule", protect, authorizeRoles("student"), skillAssessmentController.scheduleAssessment);
+// router.get("/:id/start", protect, authorizeRoles("student"), skillAssessmentController.startAssessment);
+// router.post("/:id/submit", protect, authorizeRoles("student"), skillAssessmentController.submitAssessment);
+
+
+
+// =================================================
+// MY PROFILE (STUDENT)
+// =================================================
+
+router.get(
+  "/my-profile",
   protect,
   authorizeRoles("student"),
   assessmentController.reportViolation

@@ -146,8 +146,8 @@ const userSchema = new mongoose.Schema(
     },
 
     country: {
-      type: String,
-      default: "IN",
+      type: String, // "IN", "US", "UK"
+      default: "India",
     },
 
     socialLogin: {
