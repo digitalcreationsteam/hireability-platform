@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema(
 
     country: {
       type: String, // "IN", "US", "UK"
-      default: "IN",
+      default: "India",
     },
 
     socialLogin: { type: String, default: null },
