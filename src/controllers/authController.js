@@ -26,18 +26,9 @@ const otpEmailTemplate = require("./../utils/otpEmailTemplate");
 // REMOVED: skill-index-intro, assessment-intro (frontend-only)
 // These are auto-skipped, not tracked in database
 const STEP_SEQUENCE = [
-  "resume",
-  "demographics",
-  "education",
-  "experience",
-  "certifications",
-  "awards",
-  "projects",
-  "job-domain",
-  "skills",
-  "paywall",        // ✅ MOVED HERE - after skills
-  "assessment",
-  "assessment-results",
+  "resume", "demographics", "education", "experience",
+  "certifications", "awards", "projects",
+  "paywall", "job-domain", "skills", "assessment", "assessment-results"
 ];
 
 // ============================================
@@ -363,6 +354,9 @@ exports.checkEmailVerification = async (req, res) => {
 // VERIFY ROUTE - Optional security check
 // ============================================
 // authController.js - Fix verifyRouteEndpoint
+// ============================================
+// VERIFY ROUTE - Optional security check
+// ============================================
 exports.verifyRouteEndpoint = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
@@ -415,9 +409,10 @@ exports.verifyRouteEndpoint = async (req, res) => {
     }
 
     // Add all previous completed steps (allow going back)
-    const completedSteps = STEP_SEQUENCE.filter((step, index) =>
-      index < currentStepIndex && status[step]
-    );
+    // FIXED: Use completionStatus instead of undefined 'status' variable
+    const completedSteps = STEP_SEQUENCE.filter((step, index) => {
+      return index < currentStepIndex && completionStatus[step];
+    });
 
     completedSteps.forEach(step => {
       allowedRoutes.push(`/${step}`);
@@ -426,32 +421,24 @@ exports.verifyRouteEndpoint = async (req, res) => {
     // Remove duplicates
     const uniqueAllowedRoutes = [...new Set(allowedRoutes)];
 
-    // Special case: If paywall is the current step, allow access
-    if (navigation.currentStep === "paywall") {
-      uniqueAllowedRoutes.push("/paywall");
-    }
-
-    const isAllowed = uniqueAllowedRoutes.includes(requestedRoute);
-
-    console.log("📍 Route verification:", {
-      requested: requestedRoute,
-      allowed: isAllowed,
-      currentStep: navigation.currentStep,
-      allowedRoutes: uniqueAllowedRoutes
-    });
+    // Check if requested route is allowed
+    const isAllowed = uniqueAllowedRoutes.includes(requestedRoute) ||
+      requestedRoute === "/dashboard" ||
+      requestedRoute.startsWith("/api/"); // Allow API routes
 
     res.status(200).json({
       success: true,
       allowed: isAllowed,
       nextRoute: navigation.nextRoute,
       currentStep: navigation.currentStep,
-      allowedRoutes: uniqueAllowedRoutes, // Send to frontend for hydration
+      allowedRoutes: uniqueAllowedRoutes,
     });
+
   } catch (error) {
     console.error("❌ verifyRouteEndpoint error:", error);
     res.status(500).json({
       success: false,
-      message: "Route verification failed",
+      message: "Failed to verify route",
     });
   }
 };
