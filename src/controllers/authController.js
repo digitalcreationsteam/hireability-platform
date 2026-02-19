@@ -433,7 +433,7 @@ exports.checkEmailVerification = async (req, res) => {
 // ============================================
 // VERIFY ROUTE - Optional security check
 // ============================================
-// authController.js - Fix verifyRouteEndpoint
+
 exports.verifyRouteEndpoint = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
