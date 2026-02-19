@@ -154,17 +154,37 @@ exports.deleteUser = async (req, res) => {
 // ===============================
 // PLATFORM STATS
 // ===============================
+// exports.getPlatformStats = async (req, res) => {
+//   try {
+//     const stats = await User.aggregate([
+//       { $group: { _id: "$role", count: { $sum: 1 } } },
+//     ]);
+
+//     res.json({ success: true, stats });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 exports.getPlatformStats = async (req, res) => {
   try {
     const stats = await User.aggregate([
       { $group: { _id: "$role", count: { $sum: 1 } } },
     ]);
 
-    res.json({ success: true, stats });
+    // Calculate total users
+    const totalCount = stats.reduce((sum, item) => sum + item.count, 0);
+
+    res.json({
+      success: true,
+      count: totalCount,
+      stats,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // Ranking Controller
 exports.getUserScoreByUserId = async (req, res) => {
@@ -608,35 +628,78 @@ exports.getTotalPayingUsers = async (req, res) => {
   }
 };
 
+// exports.getDailyActiveUsers = async (req, res) => {
+//   try {
+//     // 📅 Start & End of Today (server timezone)
+//     const startOfDay = new Date();
+//     startOfDay.setHours(0, 0, 0, 0);
+
+//     const endOfDay = new Date();
+//     endOfDay.setHours(23, 59, 59, 999);
+
+//     // 1️⃣ Get active users from tests
+//     const testUsers = await testAttemptModel.distinct("userId", {
+//       createdAt: { $gte: startOfDay, $lte: endOfDay }
+//     });
+
+//     // 2️⃣ Get active users from case studies
+//     const caseUsers = await userCaseAttemptModel.distinct("userId", {
+//       createdAt: { $gte: startOfDay, $lte: endOfDay }
+//     });
+
+//     // 3️⃣ Merge & deduplicate users
+//     const uniqueUsers = new Set([
+//       ...testUsers.map(id => id.toString()),
+//       ...caseUsers.map(id => id.toString())
+//     ]);
+
+//     res.status(200).json({
+//       success: true,
+//       dailyActiveUsers: uniqueUsers.size,
+//       date: startOfDay.toISOString().split("T")[0]
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 exports.getDailyActiveUsers = async (req, res) => {
   try {
-    // 📅 Start & End of Today (server timezone)
-    const startOfDay = new Date();
+    // 🇮🇳 Get current IST time
+    const now = new Date();
+
+    const istTime = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    // 📅 Start of IST day
+    const startOfDay = new Date(istTime);
     startOfDay.setHours(0, 0, 0, 0);
 
-    const endOfDay = new Date();
+    // 📅 End of IST day
+    const endOfDay = new Date(istTime);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1️⃣ Get active users from tests
+    // 1️⃣ Active users from tests
     const testUsers = await testAttemptModel.distinct("userId", {
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
     });
 
-    // 2️⃣ Get active users from case studies
+    // 2️⃣ Active users from case studies
     const caseUsers = await userCaseAttemptModel.distinct("userId", {
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
     });
 
-    // 3️⃣ Merge & deduplicate users
+    // 3️⃣ Merge & deduplicate
     const uniqueUsers = new Set([
-      ...testUsers.map(id => id.toString()),
-      ...caseUsers.map(id => id.toString())
+      ...testUsers.map((id) => id.toString()),
+      ...caseUsers.map((id) => id.toString()),
     ]);
 
     res.status(200).json({
       success: true,
       dailyActiveUsers: uniqueUsers.size,
-      date: startOfDay.toISOString().split("T")[0]
+      date: startOfDay.toLocaleDateString("en-CA"), // YYYY-MM-DD
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -889,6 +952,86 @@ exports.getStatesByCountry = async (req, res) => {
  * Get user statistics for a specific location
  * GET /api/admin/analytics/users-by-location?country=India&state=Maharashtra
  */
+
+
+// exports.getUsersByLocation = async (req, res) => {
+//   try {
+//     const { country, state } = req.query;
+
+//     if (!country || !state) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Both country and state parameters are required",
+//       });
+//     }
+
+//     // Get user IDs from demographics for the location
+//     const userDemos = await demographicsModel.find({
+//       country: country,
+//       state: state,
+//     }).select("userId");
+
+//     const userIds = userDemos.map(demo => demo.userId);
+
+//     // Get user count and breakdown
+//     const totalCount = userIds.length;
+
+//     const breakdown = await User.aggregate([
+//       {
+//         $match: {
+//           _id: { $in: userIds },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$role",
+//           count: { $sum: 1 },
+//         },
+//       },
+//       {
+//         $project: {
+//           _id: 0,
+//           role: "$_id",
+//           count: 1,
+//         },
+//       },
+//     ]);
+
+//     // Extract students and recruiters
+//     let students = 0;
+//     let recruiters = 0;
+
+//     breakdown.forEach((item) => {
+//       if (item.role === "student") {
+//         students = item.count;
+//       } else if (item.role === "recruiter") {
+//         recruiters = item.count;
+//       }
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         count: totalCount,
+//         students: students,
+//         recruiters: recruiters,
+//         location: {
+//           country: country,
+//           state: state,
+//         },
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching users by location:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch users by location",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 exports.getUsersByLocation = async (req, res) => {
   try {
     const { country, state } = req.query;
@@ -900,21 +1043,31 @@ exports.getUsersByLocation = async (req, res) => {
       });
     }
 
-    // Get user IDs from demographics for the location
-    const userDemos = await demographicsModel.find({
-      country: country,
-      state: state,
-    }).select("userId");
+    // 1️⃣ Get user IDs from demographics for given location
+    const userDemos = await demographicsModel
+      .find({ country, state })
+      .select("userId");
 
-    const userIds = userDemos.map(demo => demo.userId);
+    const userIds = userDemos.map((demo) => demo.userId);
 
-    // Get user count and breakdown
-    const totalCount = userIds.length;
+    if (!userIds.length) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          count: 0,
+          students: 0,
+          recruiters: 0,
+          location: { country, state },
+        },
+      });
+    }
 
+    // 2️⃣ Aggregate ONLY student & recruiter
     const breakdown = await User.aggregate([
       {
         $match: {
           _id: { $in: userIds },
+          role: { $in: ["student", "recruiter"] }, // 👈 Ignore admin
         },
       },
       {
@@ -923,39 +1076,30 @@ exports.getUsersByLocation = async (req, res) => {
           count: { $sum: 1 },
         },
       },
-      {
-        $project: {
-          _id: 0,
-          role: "$_id",
-          count: 1,
-        },
-      },
     ]);
 
-    // Extract students and recruiters
+    // 3️⃣ Extract counts
     let students = 0;
     let recruiters = 0;
 
     breakdown.forEach((item) => {
-      if (item.role === "student") {
-        students = item.count;
-      } else if (item.role === "recruiter") {
-        recruiters = item.count;
-      }
+      if (item._id === "student") students = item.count;
+      if (item._id === "recruiter") recruiters = item.count;
     });
 
+    const totalCount = students + recruiters;
+
+    // 4️⃣ Send response
     res.status(200).json({
       success: true,
       data: {
         count: totalCount,
-        students: students,
-        recruiters: recruiters,
-        location: {
-          country: country,
-          state: state,
-        },
+        students,
+        recruiters,
+        location: { country, state },
       },
     });
+
   } catch (error) {
     console.error("Error fetching users by location:", error);
     res.status(500).json({
