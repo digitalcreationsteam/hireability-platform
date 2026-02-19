@@ -23,41 +23,41 @@ exports.getDashboardByUserId = async (req, res) => {
        FETCH RAW DATA
     -------------------------------- */
     const [
-  demographics,
-  education,
-  workExperience,
-  certifications,
-  awards,
-  projects,
-  userScore,
-  topUser,
-  skillDocs,
-  documents,
-  latestAttempt
-] = await Promise.all([
-  Demographics.find({ userId }).lean(),
-  Education.find({ userId }).lean(),
-  WorkExperience.find({ userId }).lean(),
-  Certification.find({ userId }).lean(),
-  Award.find({ userId }).lean(),
-  Project.find({ userId }).lean(),
-  UserScore.findOne({ userId }).lean(),
+      demographics,
+      education,
+      workExperience,
+      certifications,
+      awards,
+      projects,
+      userScore,
+      topUser,
+      skillDocs,
+      documents,
+      latestAttempt
+    ] = await Promise.all([
+      Demographics.find({ userId }).lean(),
+      Education.find({ userId }).lean(),
+      WorkExperience.find({ userId }).lean(),
+      Certification.find({ userId }).lean(),
+      Award.find({ userId }).lean(),
+      Project.find({ userId }).lean(),
+      UserScore.findOne({ userId }).lean(),
 
-  UserScore.findOne({})
-    .sort({ experienceIndexScore: -1 })
-    .select("experienceIndexScore")
-    .lean(),
+      UserScore.findOne({})
+        .sort({ experienceIndexScore: -1 })
+        .select("experienceIndexScore")
+        .lean(),
 
-  UserDomainSkill.find({ userId }).lean(),
-  UserDocument.findOne({ userId }).lean(),
+      UserDomainSkill.find({ userId }).lean(),
+      UserDocument.findOne({ userId }).lean(),
 
-  // ✅ NEW: latest test attempt integrity
-  testAttempt
-    .findOne({ userId })
-    .sort({ updatedAt: -1 })
-    .select("integrity status domainId startedAt expiresAt cheatAlertSent violations")
-    .lean(),
-]);
+      // ✅ NEW: latest test attempt integrity
+      testAttempt
+        .findOne({ userId })
+        .sort({ updatedAt: -1 })
+        .select("integrity status domainId startedAt expiresAt cheatAlertSent violations")
+        .lean(),
+    ]);
 
     /* --------------------------------
        SAFE FALLBACKS
@@ -124,19 +124,19 @@ exports.getDashboardByUserId = async (req, res) => {
         profileUrl: documents?.profileUrl || null
       },
 
-      jobdomain:{
+      jobdomain: {
         domain: documents?.jobdomain || "Professional"
       },
-       integrity: {
-          score: latestAttempt?.integrity?.score ?? 100,
-          level: latestAttempt?.integrity?.level ?? "Excellent",
-          status: latestAttempt?.status ?? null, // completed / in_progress / expired
-          cheatAlertSent: latestAttempt?.cheatAlertSent ?? false,
-          totalViolations: latestAttempt?.violations?.length ?? 0,
-          startedAt: latestAttempt?.startedAt ?? null,
-          expiresAt: latestAttempt?.expiresAt ?? null,
-          domainId: latestAttempt?.domainId ?? null,
-        },
+      integrity: {
+        score: latestAttempt?.integrity?.score ?? 100,
+        level: latestAttempt?.integrity?.level ?? "Excellent",
+        status: latestAttempt?.status ?? null, // completed / in_progress / expired
+        cheatAlertSent: latestAttempt?.cheatAlertSent ?? false,
+        totalViolations: latestAttempt?.violations?.length ?? 0,
+        startedAt: latestAttempt?.startedAt ?? null,
+        expiresAt: latestAttempt?.expiresAt ?? null,
+        domainId: latestAttempt?.domainId ?? null,
+      },
 
 
     });

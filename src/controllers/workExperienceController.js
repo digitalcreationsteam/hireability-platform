@@ -1,22 +1,9 @@
 const WorkExperience = require("../models/workModel");
 const User = require("../models/userModel");
+const UserScore = require("../models/userScoreModel"); // Add this import
 const { recalculateUserScore } = require("../services/recalculateUserScore");
 const { calculateNavigation, getCompletionStatus } = require("./authController");
 
-/* --------------------------------------------------
-   SCORE CALCULATION (SINGLE EXPERIENCE)
--------------------------------------------------- */
-// const calculateSingleWorkScore = (exp) => {
-//   let score = 0;
-//   const years = exp.duration || 0;
-
-//   score += years * 60;
-
-//   if (years >= 10) score += 200;
-//   else if (years >= 5) score += 100;
-
-//   return score;
-// };
 /* --------------------------------------------------
    SCORE CALCULATION (SINGLE EXPERIENCE)
 -------------------------------------------------- */
@@ -38,13 +25,89 @@ const calculateSingleWorkScore = (exp) => {
   };
 
   const pointsPerMonth = pointsPerMonthMap[roleType] || 0;
-
   score = months * pointsPerMonth;
 
   return score;
 };
 
+/* --------------------------------------------------
+   CALCULATE YEARS OF EXPERIENCE FROM WORK HISTORY
+-------------------------------------------------- */
+const calculateYearsOfExperience = (workList) => {
+  if (!workList || workList.length === 0) return 0;
 
+  let totalMonths = 0;
+  const currentDate = new Date();
+
+  workList.forEach(job => {
+    if (job.startYear) {
+      // Parse start date (assuming startYear is the year only)
+      const startDate = new Date(job.startYear, 0); // January of start year
+
+      // Parse end date or use current date if currently working
+      let endDate;
+      if (job.currentlyWorking) {
+        endDate = currentDate;
+      } else if (job.endYear) {
+        endDate = new Date(job.endYear, 11); // December of end year
+      } else {
+        endDate = startDate; // No end date, assume 0 duration
+      }
+
+      // Calculate months difference
+      const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+
+      totalMonths += Math.max(0, months);
+    }
+  });
+
+  // Convert months to years and round to 1 decimal
+  return Math.round((totalMonths / 12) * 10) / 10;
+};
+
+/* --------------------------------------------------
+   GET COHORT FROM YEARS
+-------------------------------------------------- */
+const getCohortFromYears = (years) => {
+  if (years < 1) return '0-1';
+  if (years < 2) return '1-2';
+  if (years < 3) return '2-3';
+  if (years < 4) return '3-4';
+  if (years < 5) return '4-5';
+  return '5+';
+};
+
+/* --------------------------------------------------
+   UPDATE USER YEARS OF EXPERIENCE IN USERSCORE
+-------------------------------------------------- */
+const updateUserYearsOfExperience = async (userId) => {
+  try {
+    // Get all work experiences for the user
+    const workList = await WorkExperience.find({ userId });
+
+    // Calculate years of experience
+    const yearsOfExperience = calculateYearsOfExperience(workList);
+    const experienceCohort = getCohortFromYears(yearsOfExperience);
+
+    // Update or create UserScore document
+    await UserScore.findOneAndUpdate(
+      { userId },
+      {
+        yearsOfExperience,
+        experienceCohort
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log(`Updated years of experience for user ${userId}: ${yearsOfExperience} years (${experienceCohort} cohort)`);
+
+    return { yearsOfExperience, experienceCohort };
+  } catch (error) {
+    console.error("Error updating years of experience:", error);
+    throw error;
+  }
+};
 
 /* --------------------------------------------------
    TOTAL WORK SCORE (FROM DB RECORDS)
@@ -56,7 +119,7 @@ const calculateTotalWorkScore = (workList) => {
 };
 
 /* --------------------------------------------------
-   UPDATE USER TOTAL WORK SCORE
+   UPDATE USER TOTAL WORK SCORE AND YEARS OF EXPERIENCE
 -------------------------------------------------- */
 const updateUserWorkScore = async (userId) => {
   const workList = await WorkExperience.find({ userId });
@@ -68,6 +131,9 @@ const updateUserWorkScore = async (userId) => {
     { "experienceIndex.workScore": totalWorkScore },
     { new: true }
   );
+
+  // ✅ Update years of experience in UserScore
+  await updateUserYearsOfExperience(userId);
 
   // 🔥 Recalculate final combined score
   await recalculateUserScore(userId);
@@ -103,15 +169,21 @@ exports.createMultipleWorkExperience = async (req, res) => {
     const insertedWork = await WorkExperience.insertMany(workDocs);
 
     const totalScore = await updateUserWorkScore(userId);
+
+    // Get the updated user score with years of experience
+    const userScore = await UserScore.findOne({ userId });
+
     const completionStatus = await getCompletionStatus(userId);
     const navigation = calculateNavigation(completionStatus);
+
     return res.status(201).json({
       message: "Work experiences added successfully",
       totalAdded: insertedWork.length,
       totalWorkScore: totalScore,
+      yearsOfExperience: userScore?.yearsOfExperience || 0,
+      experienceCohort: userScore?.experienceCohort || '0-1',
       data: insertedWork,
-      navigation, // ← Frontend can update Redux
-
+      navigation,
     });
 
   } catch (error) {
@@ -132,9 +204,14 @@ exports.getWorkExperiences = async (req, res) => {
     const experiences = await WorkExperience.find({ userId })
       .sort({ startYear: -1 });
 
+    // Also get years of experience from UserScore
+    const userScore = await UserScore.findOne({ userId });
+
     return res.status(200).json({
       message: "Work experiences fetched successfully",
       data: experiences,
+      yearsOfExperience: userScore?.yearsOfExperience || 0,
+      experienceCohort: userScore?.experienceCohort || '0-1',
     });
 
   } catch (error) {
@@ -193,9 +270,14 @@ exports.updateWorkExperience = async (req, res) => {
 
     const totalScore = await updateUserWorkScore(exp.userId);
 
+    // Get updated user score
+    const userScore = await UserScore.findOne({ userId: exp.userId });
+
     return res.status(200).json({
       message: "Work experience updated successfully",
       totalWorkScore: totalScore,
+      yearsOfExperience: userScore?.yearsOfExperience || 0,
+      experienceCohort: userScore?.experienceCohort || '0-1',
       data: exp,
     });
 
@@ -220,14 +302,62 @@ exports.deleteWorkExperience = async (req, res) => {
 
     const totalScore = await updateUserWorkScore(exp.userId);
 
+    // Get updated user score
+    const userScore = await UserScore.findOne({ userId: exp.userId });
+
     return res.status(200).json({
       message: "Work experience deleted successfully",
       totalWorkScore: totalScore,
+      yearsOfExperience: userScore?.yearsOfExperience || 0,
+      experienceCohort: userScore?.experienceCohort || '0-1',
     });
 
   } catch (error) {
     return res.status(500).json({
       message: "Error deleting work experience",
+      error: error.message,
+    });
+  }
+};
+
+/* --------------------------------------------------
+   BULK UPDATE WORK EXPERIENCES (for reordering)
+-------------------------------------------------- */
+exports.bulkUpdateWorkExperiences = async (req, res) => {
+  try {
+    const userId = req.headers["user-id"];
+    const { experiences } = req.body;
+
+    if (!Array.isArray(experiences)) {
+      return res.status(400).json({ message: "Experiences must be an array" });
+    }
+
+    // Update each experience
+    const updatePromises = experiences.map(exp =>
+      WorkExperience.findByIdAndUpdate(
+        exp._id,
+        { $set: { order: exp.order } },
+        { new: true }
+      )
+    );
+
+    await Promise.all(updatePromises);
+
+    // Recalculate total score and years of experience
+    const totalScore = await updateUserWorkScore(userId);
+
+    const userScore = await UserScore.findOne({ userId });
+
+    return res.status(200).json({
+      message: "Work experiences reordered successfully",
+      totalWorkScore: totalScore,
+      yearsOfExperience: userScore?.yearsOfExperience || 0,
+      experienceCohort: userScore?.experienceCohort || '0-1',
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error reordering work experiences",
       error: error.message,
     });
   }
