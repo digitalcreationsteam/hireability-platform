@@ -1,32 +1,48 @@
-const express = require("express");
-const router = express.Router();
+// const express = require("express");
+// const router = express.Router();
 
-const {
-  getAllCases,
-  startCase,
-  getCurrentQuestion,
-  submitAnswer,
-  submitAttempt,
-  getCaseReveal,
-  getWeeklyAttempts
-} = require("../controllers/caseController");
+// const {
+//   getAllCases,
+//   startCase,
+//   getCurrentQuestion,
+//   submitAnswer,
+//   submitAttempt,
+//   getCaseReveal,
+//   getWeeklyAttempts
+// } = require("../controllers/caseController");
 
+// const { protect } = require("../middlewares/authMiddleware");
+// const checkFeature = require("../middlewares/checkFeature");
+
+// // GET /api/cases
+// router.get("/", protect, getAllCases);
+// // POST /api/cases/:caseId/start
+// router.post("/:caseId/start", protect, startCase);
+// // GET /api/cases/attempt/:attemptId/question
+// router.get("/attempt/:attemptId/question", protect, getCurrentQuestion);
+// // POST /api/cases/attempt/:attemptId/answer
+// router.post("/attempt/:attemptId/answer", protect, submitAnswer);
+// // POST /api/cases/attempt/:attemptId/submit
+// router.post("/attempt/:attemptId/submit",protect, submitAttempt);
+// // GET /api/cases/:caseId/reveal
+// router.get("/:caseId/reveal", protect, getCaseReveal);
+// // get how many case study solve in one week
+// router.get("/:userId/weekly", protect, getWeeklyAttempts);
+
+// module.exports = router;
+
+const express = require("express")
+const router = express.Router()
+const caseController = require("../controllers/caseController")
 const { protect } = require("../middlewares/authMiddleware");
-const checkFeature = require("../middlewares/checkFeature");
 
-// GET /api/cases
-router.get("/", protect, checkFeature("caseStudyAccess"), getAllCases);
-// POST /api/cases/:caseId/start
-router.post("/:caseId/start", protect,checkFeature("caseStudyAccess"), startCase);
-// GET /api/cases/attempt/:attemptId/question
-router.get("/attempt/:attemptId/question", protect,checkFeature("caseStudyAccess"), getCurrentQuestion);
-// POST /api/cases/attempt/:attemptId/answer
-router.post("/attempt/:attemptId/answer", protect,checkFeature("caseStudyAccess"), submitAnswer);
-// POST /api/cases/attempt/:attemptId/submit
-router.post("/attempt/:attemptId/submit", protect,checkFeature("caseStudyAccess"), submitAttempt);
-// GET /api/cases/:caseId/reveal
-router.get("/:caseId/reveal", protect,checkFeature("caseStudyAccess"), getCaseReveal);
-// get how many case study solve in one week
-router.get("/:userId/weekly", protect, getWeeklyAttempts);
+router.get("/", protect, caseController.getCases)
+router.post("/:caseId/start", protect, caseController.startCase)
+router.get("/:caseId/opening", protect, caseController.getOpening)
+router.get("/:caseId/questions/:number", protect, caseController.getQuestion)
+router.post("/:caseId/questions/:questionId/answer", protect, caseController.submitAnswer)
+router.post("/:caseId/retry", protect, caseController.retryCase)
+router.get("/:caseId/reveal", protect, caseController.getReveal)
+ router.post("/attempt/:attemptId/submit",protect, caseController.submitAttempt);
 
-module.exports = router;
+module.exports = router

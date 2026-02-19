@@ -1,46 +1,48 @@
-const mongoose = require("mongoose");
+// models/CaseAttempt.js
 
-const userCaseAttemptSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
-  caseId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "CaseStudy",
-    required: true
-  },
-  attemptNumber: {
-    type: Number,
-    required: true
-  },
-  currentQuestion: {
-    type: Number,
-    default: 1
-  },
-  answers: [
-    {
-      questionId: mongoose.Schema.Types.ObjectId,
-      selectedOption: String
+const mongoose = require("mongoose")
+
+const caseAttemptSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    caseStudyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CaseStudy",
+      required: true
+    },
+    attemptNumber: {
+      type: Number,
+      required: true
+    },
+    answers: [
+      {
+        questionId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Question"
+        },
+        selectedOption: String,
+        isCorrect: Boolean,
+        pointsEarned: Number
+      }
+    ],
+    totalScore: {
+      type: Number,
+      default: 0
+    },
+    isCompleted: {
+      type: Boolean,
+      default: false
+    },
+    revealViewed: {
+      type: Boolean,
+      default: false
     }
-  ],
-  score: {
-    type: Number,
-    default: 0
   },
-  isCompleted: {
-    type: Boolean,
-    default: false
-  },
-   isSubmitted: {   // 🔥 ADD THIS
-    type: Boolean,
-    default: false
-  },
-  revealUnlocked: {
-    type: Boolean,
-    default: false
-  }
-}, { timestamps: true });
+  { timestamps: true }
+)
 
-module.exports = mongoose.model("UserCaseAttempt", userCaseAttemptSchema);
+module.exports = mongoose.model("CaseAttempt", caseAttemptSchema)
