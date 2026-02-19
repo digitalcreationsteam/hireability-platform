@@ -260,6 +260,78 @@ exports.getUserStatus = async (req, res) => {
 // ============================================
 // LOGIN - Returns navigation info
 // ============================================
+// exports.login = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     if (!email || !password) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email and password required",
+//       });
+//     }
+
+//     const user = await User.findOne({ email }).select("+password");
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     if (!user.isVerified) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Please verify your email before login",
+//       });
+//     }
+
+//     const isPasswordValid = await user.matchPassword(password);
+//     if (!isPasswordValid) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Invalid credentials",
+//       });
+//     }
+
+//     user.lastLogin = new Date();
+//     await user.save({ validateBeforeSave: false });
+//     // Generate token
+//     const token = generateToken(user._id);
+
+//     // Get completion status
+//     const completionStatus = await getCompletionStatus(user._id);
+
+//     // Calculate navigation
+//     const navigation = calculateNavigation(completionStatus);
+
+//     res.status(200).json({
+//       success: true,
+//       token,
+//       user: {
+//         _id: user._id,
+//         firstname: user.firstname,
+//         lastname: user.lastname,
+//         email: user.email,
+//         role: user.role,
+//       },
+//       navigation: {
+//         nextRoute: navigation.nextRoute,
+//         currentStep: navigation.currentStep,
+//         completedSteps: navigation.completedSteps,
+//         isOnboardingComplete: navigation.isOnboardingComplete,
+//         hasPayment: navigation.hasPayment,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("❌ Login error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Login failed",
+//     });
+//   }
+// };
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -332,7 +404,6 @@ exports.login = async (req, res) => {
     });
   }
 };
-
 // ============================================
 // GET USER STATUS - Called after saving steps
 // ============================================
