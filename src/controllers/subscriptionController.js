@@ -305,7 +305,7 @@ exports.getAllPlans = async (req, res) => {
         .select("country")
         .lean();
 
-      if (user?.country === "IN") {
+      if (user?.country === "India") {
         currency = "INR";
       }
     }
