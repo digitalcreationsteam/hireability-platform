@@ -12,6 +12,8 @@ const UserDocument = require("../models/userDocumentModel");
 const userDomainSkill = require("../models/userDomainSkillModel");
 const testAttempt = require("../models/testAttemptModel");
 
+// controllers/dashboardController.js - Updated getDashboardByUserId
+
 exports.getDashboardByUserId = async (req, res) => {
   try {
     const userId = req.headers["user-id"];
@@ -42,22 +44,70 @@ exports.getDashboardByUserId = async (req, res) => {
       Award.find({ userId }).lean(),
       Project.find({ userId }).lean(),
       UserScore.findOne({ userId }).lean(),
-
       UserScore.findOne({})
         .sort({ experienceIndexScore: -1 })
         .select("experienceIndexScore")
         .lean(),
-
       UserDomainSkill.find({ userId }).lean(),
       UserDocument.findOne({ userId }).lean(),
-
-      // ✅ NEW: latest test attempt integrity
       testAttempt
         .findOne({ userId })
         .sort({ updatedAt: -1 })
         .select("integrity status domainId startedAt expiresAt cheatAlertSent violations")
         .lean(),
     ]);
+
+    /* --------------------------------
+       FETCH TOTAL COUNTS FOR PERCENTILE CALCULATION
+    -------------------------------- */
+    // Get primary domain and cohort for filtering
+    const primaryDomain = userScore?.primaryDomain;
+    const cohort = userScore?.experienceCohort;
+
+    let totalGlobal = 0;
+    let totalCountry = 0;
+    let totalState = 0;
+    let totalCity = 0;
+    let totalUniversity = 0;
+
+    if (primaryDomain && cohort) {
+      // Base filter for same domain and cohort
+      const baseFilter = {
+        primaryDomain: primaryDomain,
+        experienceCohort: cohort
+      };
+
+      // Get total counts for percentile calculation
+      totalGlobal = await UserScore.countDocuments(baseFilter);
+
+      if (userScore?.country) {
+        totalCountry = await UserScore.countDocuments({
+          ...baseFilter,
+          country: userScore.country
+        });
+      }
+
+      if (userScore?.state) {
+        totalState = await UserScore.countDocuments({
+          ...baseFilter,
+          state: userScore.state
+        });
+      }
+
+      if (userScore?.city) {
+        totalCity = await UserScore.countDocuments({
+          ...baseFilter,
+          city: userScore.city
+        });
+      }
+
+      if (userScore?.university) {
+        totalUniversity = await UserScore.countDocuments({
+          ...baseFilter,
+          university: userScore.university
+        });
+      }
+    }
 
     /* --------------------------------
        SAFE FALLBACKS
@@ -115,6 +165,15 @@ exports.getDashboardByUserId = async (req, res) => {
         universityRank: userScore?.universityRank || 0
       },
 
+      // NEW: Add total counts for percentile calculation
+      totalCounts: {
+        global: totalGlobal,
+        country: totalCountry,
+        state: totalState,
+        city: totalCity,
+        university: totalUniversity
+      },
+
       skills: {
         list: skills
       },
@@ -130,15 +189,13 @@ exports.getDashboardByUserId = async (req, res) => {
       integrity: {
         score: latestAttempt?.integrity?.score ?? 100,
         level: latestAttempt?.integrity?.level ?? "Excellent",
-        status: latestAttempt?.status ?? null, // completed / in_progress / expired
+        status: latestAttempt?.status ?? null,
         cheatAlertSent: latestAttempt?.cheatAlertSent ?? false,
         totalViolations: latestAttempt?.violations?.length ?? 0,
         startedAt: latestAttempt?.startedAt ?? null,
         expiresAt: latestAttempt?.expiresAt ?? null,
         domainId: latestAttempt?.domainId ?? null,
       },
-
-
     });
 
   } catch (err) {

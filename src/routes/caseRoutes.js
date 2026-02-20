@@ -37,7 +37,7 @@ const caseController = require("../controllers/caseController")
 const { protect } = require("../middlewares/authMiddleware");
 const checkFeature = require("../middlewares/checkFeature");
 
-router.get("/", protect,checkFeature("caseStudyAccess"), caseController.getCases)
+router.get("/", protect, checkFeature("caseStudyAccess"), caseController.getCases)
 router.post("/:caseId/start", protect, caseController.startCase)
 router.get("/:caseId/opening", protect, caseController.getOpening)
 router.get("/:caseId/questions/:number", protect, caseController.getQuestion)

@@ -22,8 +22,7 @@ const projectController = require("../controllers/projectController");
 const demographicsController = require("../controllers/demographicsController");
 const userDocumentController = require("../controllers/userDocumentController");
 const universityController = require("../controllers/universityController");
-
-
+const { getUserProfiles, updateAward } = require("../controllers/userController")
 
 const router = express.Router();
 
@@ -47,6 +46,18 @@ router.get(
   protect,
   authorizeRoles("student"),
   getDashboardByUserId
+);
+router.get(
+  "/my-profile",
+  protect,
+  getUserProfiles
+);
+
+
+router.put(
+  "/awards/:id",
+  protect,
+  updateAward
 );
 
 router.get(

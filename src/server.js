@@ -116,6 +116,8 @@ connectDB().then(() => {
   app.use('/api/cases', require("./routes/caseRoutes"));
   app.use('/api/admin/cases', require("./routes/adminCaseRoutes"));
   app.use('/api/university', require("./routes/universityRoutes"));
+  // app.use('/api/profile', require("./routes/profileRoutes"));
+
 
 
   app.get("/", (req, res) => {
