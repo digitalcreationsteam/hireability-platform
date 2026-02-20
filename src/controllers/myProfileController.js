@@ -1,4 +1,4 @@
-// // controllers/userController.js
+// controllers/userController.js
 // const User = require('../models/User');
 // const Demographics = require('../models/Demographics');
 // const Education = require('../models/Education');

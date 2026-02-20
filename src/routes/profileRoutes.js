@@ -6,7 +6,7 @@
 // const userController = require('../controllers/myProfileController');
 // const authMiddleware = require('../middleware/authMiddleware');
 
-// // Configure multer for file uploads
+// // // Configure multer for file uploads
 // const storage = multer.diskStorage({
 //     destination: (req, file, cb) => {
 //         cb(null, 'uploads/');
@@ -35,31 +35,31 @@
 //     fileFilter: fileFilter
 // });
 
-// // Public routes (if any)
-// // router.get('/public/:id', userController.getPublicProfile);
+// // // Public routes (if any)
+// // // router.get('/public/:id', userController.getPublicProfile);
 
-// // Protected routes - require authentication
-// router.use(authMiddleware.verifyToken);
+// // // Protected routes - require authentication
+// // router.use(authMiddleware.verifyToken);
 
-// // Profile routes
-// router.get('/my-profile', userController.getUserProfile);
-// router.post('/demographics', userController.updateDemographics);
-// router.post('/profile', upload.single('profile'), userController.uploadProfilePicture);
+// // // Profile routes
+// // router.get('/my-profile', userController.getUserProfile);
+// // router.post('/demographics', userController.updateDemographics);
+// router.post('/uploadProfile', upload.single('profile'), userController.uploadProfilePicture);
 
-// // Education routes
-// router.get('/education', userController.getEducation);
-// router.post('/education', userController.addEducation);
-// router.put('/education/:id', userController.updateEducation);
-// router.delete('/education/:id', userController.deleteEducation);
+// // // Education routes
+// // router.get('/education', userController.getEducation);
+// // router.post('/education', userController.addEducation);
+// // router.put('/education/:id', userController.updateEducation);
+// // router.delete('/education/:id', userController.deleteEducation);
 
-// // Work Experience routes
-// router.get('/work', userController.getWorkExperience);
-// router.post('/work', userController.addWorkExperience);
-// router.put('/work/:id', userController.updateWorkExperience);
-// router.delete('/work/:id', userController.deleteWorkExperience);
+// // // Work Experience routes
+// // router.get('/work', userController.getWorkExperience);
+// // router.post('/work', userController.addWorkExperience);
+// // router.put('/work/:id', userController.updateWorkExperience);
+// // router.delete('/work/:id', userController.deleteWorkExperience);
 
-// // Resume routes
-// router.post('/resume', upload.single('resume'), userController.uploadResume);
-// router.get('/resume', userController.getResume);
+// // // Resume routes
+// // router.post('/resume', upload.single('resume'), userController.uploadResume);
+// // router.get('/resume', userController.getResume);
 
-// module.exports = router;
+// // module.exports = router;

@@ -37,13 +37,13 @@ const caseController = require("../controllers/caseController")
 const { protect } = require("../middlewares/authMiddleware");
 const checkFeature = require("../middlewares/checkFeature");
 
-router.get("/", protect,checkFeature("caseStudyAccess"), caseController.getCases)
+router.get("/", protect, checkFeature("caseStudyAccess"), caseController.getCases)
 router.post("/:caseId/start", protect, caseController.startCase)
 router.get("/:caseId/opening", protect, caseController.getOpening)
 router.get("/:caseId/questions/:number", protect, caseController.getQuestion)
 router.post("/:caseId/questions/:questionId/answer", protect, caseController.submitAnswer)
 router.post("/:caseId/retry", protect, caseController.retryCase)
 router.get("/:caseId/reveal", protect, caseController.getReveal)
- router.post("/attempt/:attemptId/submit",protect, caseController.submitAttempt);
+router.post("/attempt/:attemptId/submit", protect, caseController.submitAttempt);
 
 module.exports = router
