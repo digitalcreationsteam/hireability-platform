@@ -269,7 +269,7 @@
 //   }
 // };
 
-
+const mongoose = require("mongoose");
 const CaseStudy = require("../models/caseStudyModel")
 const Question = require("../models/caseQuestionModel")
 const CaseAttempt = require("../models/userCaseAttemptModel")
@@ -603,6 +603,40 @@ exports.submitAttempt = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// get cases solve in one week
+exports.getWeeklyAttempts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid userId" });
+    }
+
+    // Date 7 days ago
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    // Fetch attempts in last 7 days
+    const attempts = await CaseAttempt.find({
+      userId,
+      createdAt: { $gte: oneWeekAgo },
+    });
+
+    res.status(200).json({
+      success: true,
+      totalAttempts: attempts.length,
+      attempts, // optional: remove if only count needed
+    });
+  } catch (error) {
+    console.error("❌ Error fetching weekly attempts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
