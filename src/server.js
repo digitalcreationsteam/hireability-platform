@@ -115,6 +115,7 @@ connectDB().then(() => {
   app.use('/api/recruiter', require("./routes/recruiterRoutes"));
   app.use('/api/cases', require("./routes/caseRoutes"));
   app.use('/api/admin/cases', require("./routes/adminCaseRoutes"));
+  app.use('/api/university', require("./routes/universityRoutes"));
 
 
   app.get("/", (req, res) => {

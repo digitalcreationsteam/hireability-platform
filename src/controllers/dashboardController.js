@@ -112,7 +112,7 @@ exports.getDashboardByUserId = async (req, res) => {
         countryRank: userScore?.countryRank || 0,
         stateRank: userScore?.stateRank || 0,
         cityRank: userScore?.cityRank || 0,
-        universityRank: userScore?.universityrank || 0
+        universityRank: userScore?.universityRank || 0
       },
 
       skills: {

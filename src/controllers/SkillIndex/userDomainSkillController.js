@@ -12,6 +12,8 @@ const calculateSkillScore = (skills) => {
 /**
  * Add or update user domain and subdomain
  */
+// Fix the addUserDomainSubDomain function
+
 exports.addUserDomainSubDomain = async (req, res) => {
   try {
     const { userId, domainId, subDomainId } = req.body;
@@ -21,6 +23,8 @@ exports.addUserDomainSubDomain = async (req, res) => {
         message: "userId and domainId are required",
       });
     }
+
+    console.log(`[addUserDomainSubDomain] Adding domain for user: ${userId}, domain: ${domainId}, subDomain: ${subDomainId || 'none'}`);
 
     // Get domain details to store name
     const Domain = require("../../models/domainModel");
@@ -32,6 +36,8 @@ exports.addUserDomainSubDomain = async (req, res) => {
       });
     }
 
+    console.log(`[addUserDomainSubDomain] Domain found: ${domain.name}`);
+
     // 1️⃣ Save/Update domain in UserDomainSkill table
     let record;
 
@@ -40,8 +46,11 @@ exports.addUserDomainSubDomain = async (req, res) => {
       record = await UserDomainSkill.findOneAndUpdate(
         { userId, domainId, subDomainId },
         {
-          $set: { domainId, subDomainId },
-          $setOnInsert: { skills: [] },
+          $set: {
+            domainId,
+            subDomainId,
+            skills: [] // Initialize empty skills array
+          },
         },
         {
           new: true,
@@ -53,8 +62,10 @@ exports.addUserDomainSubDomain = async (req, res) => {
       record = await UserDomainSkill.findOneAndUpdate(
         { userId, domainId },
         {
-          $set: { domainId },
-          $setOnInsert: { skills: [] },
+          $set: {
+            domainId,
+            skills: [] // Initialize empty skills array
+          },
         },
         {
           new: true,
@@ -63,38 +74,39 @@ exports.addUserDomainSubDomain = async (req, res) => {
       );
     }
 
+    console.log(`[addUserDomainSubDomain] Record created/updated:`, record._id);
+
     // 2️⃣ Check if this should be the primary domain
     // If user has no primary domain yet, set this as primary
-    const userScore = await UserScore.findOne({ userId });
+    let userScore = await UserScore.findOne({ userId });
 
-    if (!userScore || !userScore.primaryDomain) {
+    if (!userScore) {
+      console.log(`[addUserDomainSubDomain] Creating new user score`);
       // This is the first domain, set as primary
-      await UserScore.findOneAndUpdate(
-        { userId },
-        {
-          $set: {
-            primaryDomain: domainId,
-            primaryDomainName: domain.name
-          },
-          $push: {
-            domainScores: {
-              domainId: domainId,
-              domainName: domain.name,
-              skillScore: 0,
-              domainRank: null,
-              domainCohortRank: null
-            }
-          }
-        },
-        { upsert: true }
-      );
+      userScore = await UserScore.create({
+        userId,
+        primaryDomain: domainId,
+        primaryDomainName: domain.name,
+        domainScores: [{
+          domainId: domainId,
+          domainName: domain.name,
+          skillScore: 0,
+          domainRank: null,
+          domainCohortRank: null
+        }],
+        yearsOfExperience: 0
+      });
+      console.log(`[addUserDomainSubDomain] User score created with primary domain`);
     } else {
+      console.log(`[addUserDomainSubDomain] Existing user score found`);
+
       // Check if this domain already exists in domainScores array
       const existingDomain = userScore.domainScores?.find(
-        ds => ds.domainId.toString() === domainId.toString()
+        ds => ds.domainId && ds.domainId.toString() === domainId.toString()
       );
 
       if (!existingDomain) {
+        console.log(`[addUserDomainSubDomain] Adding domain to domainScores array`);
         // Add to domainScores array if not exists
         await UserScore.findOneAndUpdate(
           { userId },
@@ -110,19 +122,42 @@ exports.addUserDomainSubDomain = async (req, res) => {
             }
           }
         );
+      } else {
+        console.log(`[addUserDomainSubDomain] Domain already exists in domainScores`);
+      }
+
+      // If no primary domain set, set this as primary
+      if (!userScore.primaryDomain) {
+        console.log(`[addUserDomainSubDomain] Setting as primary domain`);
+        await UserScore.findOneAndUpdate(
+          { userId },
+          {
+            $set: {
+              primaryDomain: domainId,
+              primaryDomainName: domain.name
+            }
+          }
+        );
       }
     }
 
     // 3️⃣ Trigger rank recalculation for all domains
+    console.log(`[addUserDomainSubDomain] Triggering rank recalculation`);
     await recalculateAllRanks(userId);
+
+    // Fetch the updated record to return
+    const updatedRecord = await UserDomainSkill.findById(record._id)
+      .populate("domainId", "name")
+      .populate("subDomainId", "name");
 
     return res.status(200).json({
       message: "Domain saved successfully",
-      data: record,
+      data: updatedRecord,
     });
 
   } catch (err) {
-    console.error("Error in addUserDomainSubDomain:", err);
+    console.error("❌ Error in addUserDomainSubDomain:", err);
+    console.error("❌ Error stack:", err.stack);
     return res.status(500).json({
       message: "Something went wrong",
       error: err.message,

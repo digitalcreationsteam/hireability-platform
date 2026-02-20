@@ -25,6 +25,9 @@ const otpEmailTemplate = require("./../utils/otpEmailTemplate");
 // ============================================
 // REMOVED: skill-index-intro, assessment-intro (frontend-only)
 // These are auto-skipped, not tracked in database
+// ============================================
+// STEP SEQUENCE - ONLY REAL DATA STEPS
+// ============================================
 const STEP_SEQUENCE = [
   "resume",
   "demographics",
@@ -33,9 +36,9 @@ const STEP_SEQUENCE = [
   "certifications",
   "awards",
   "projects",
+  "paywall",        // ✅ After projects, before job-domain
   "job-domain",
   "skills",
-  "paywall",        // ✅ MOVED HERE - after skills
   "assessment",
   "assessment-results",
 ];
@@ -576,9 +579,15 @@ exports.verifyRouteEndpoint = async (req, res) => {
 
 // Update your signup function
 // controllers/authController.js - Updated signup function
+// controllers/authController.js - FINAL FIXED VERSION
 exports.signup = async (req, res) => {
   try {
     const { firstname, lastname, email, password, role } = req.body;
+
+    console.log('\n========== SIGNUP ATTEMPT ==========');
+    console.log('📧 Email:', email);
+    console.log('👤 Name:', firstname, lastname);
+    console.log('====================================\n');
 
     // Validation
     if (!firstname || !lastname || !email || !password) {
@@ -588,18 +597,15 @@ exports.signup = async (req, res) => {
       });
     }
 
-    // Check if user exists
+    // Check if user exists (case insensitive)
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      console.log('❌ Email already registered:', email);
       return res.status(409).json({
         success: false,
         message: "Email already registered"
       });
     }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -610,12 +616,13 @@ exports.signup = async (req, res) => {
     console.log('   OTP:', otp);
     console.log('   Expiry:', new Date(otpExpiry));
 
-    // Create user
+    // ⚠️ IMPORTANT: DO NOT HASH PASSWORD HERE
+    // The User model's pre-save hook will hash it automatically
     const user = await User.create({
       firstname,
       lastname,
       email: email.toLowerCase(),
-      password: hashedPassword,
+      password: password, // ← PASS PLAIN PASSWORD, NOT HASHED
       role: role || "student",
       isVerified: false,
       otp: otp,
@@ -623,8 +630,7 @@ exports.signup = async (req, res) => {
     });
 
     console.log('✅ User created with ID:', user._id);
-    console.log('✅ OTP saved in DB:', user.otp);
-    console.log('✅ Expiry saved:', user.otpExpiry);
+    console.log('✅ Password will be hashed by model pre-save hook');
 
     // Send OTP via email
     try {
@@ -636,6 +642,7 @@ exports.signup = async (req, res) => {
       console.log(`✅ OTP email sent to ${email}`);
     } catch (emailError) {
       console.error('❌ Failed to send email:', emailError);
+      // Don't fail signup if email fails - user can resend OTP
     }
 
     // Create JWT token
@@ -645,6 +652,7 @@ exports.signup = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Don't send OTP in response (security)
     res.status(201).json({
       success: true,
       message: "Signup successful. Please verify your email with OTP.",

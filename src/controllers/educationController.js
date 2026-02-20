@@ -3,7 +3,9 @@ const User = require("../models/userModel");
 const UserScore = require("../models/userScoreModel"); // ✅ IMPORT UserScore model
 const { recalculateUserScore } = require("../services/recalculateUserScore");
 const { calculateNavigation, getCompletionStatus } = require("./authController");
-
+const universityMatching = require("../services/universityMatchingService");
+const University = require("../models/universityModel");
+const universitySync = require("../services/universitySyncService");
 /* ==================================================
    SINGLE EDUCATION SCORE CALCULATION
 ================================================== */
@@ -59,76 +61,78 @@ const calculateEducationPoints = (educationList) => {
 ================================================== */
 const updateUserUniversityInUserScore = async (userId) => {
   try {
-    console.log(`[updateUserUniversityInUserScore] Starting for user: ${userId}`);
+    console.log(`[University] Starting for user: ${userId}`);
 
-    // Get the most recent education (or highest degree)
+    // Get the most recent education
     const latestEducation = await Education.findOne({ userId })
       .sort({ endYear: -1, startYear: -1 })
       .lean();
 
     if (latestEducation && latestEducation.schoolName) {
-      console.log(`[updateUserUniversityInUserScore] Found education with school: ${latestEducation.schoolName}`);
+      console.log(`[University] Original: "${latestEducation.schoolName}"`);
 
-      // ✅ UPDATE USERSCORE MODEL (not User model)
+      // Find best matching university globally
+      const match = await universityMatching.findBestMatch(latestEducation.schoolName);
+
+      console.log(`[University] Matched to: "${match.matchedName}" (confidence: ${match.confidence}, type: ${match.matchType})`);
+
+      // Use matched name if confidence is high enough
+      const universityName = match.confidence > 0.7
+        ? match.matchedName
+        : latestEducation.schoolName;
+
+      // Update UserScore
       const updatedUserScore = await UserScore.findOneAndUpdate(
         { userId },
         {
           $set: {
-            university: latestEducation.schoolName
+            university: universityName,
+            originalUniversity: latestEducation.schoolName,
+            universityMatchConfidence: match.confidence,
+            universityMatchType: match.matchType
           }
         },
         { new: true, upsert: true }
       );
 
-      console.log(`[updateUserUniversityInUserScore] Updated UserScore university to: ${latestEducation.schoolName}`);
-      console.log(`[updateUserUniversityInUserScore] UserScore after update:`, updatedUserScore);
+      console.log(`[University] Updated to: "${universityName}"`);
 
-      return latestEducation.schoolName;
+      return universityName;
     } else {
-      console.log(`[updateUserUniversityInUserScore] No education found with schoolName for user: ${userId}`);
-
-      // If no education, clear the university field
       await UserScore.findOneAndUpdate(
         { userId },
         {
-          $unset: { university: 1 }
+          $unset: {
+            university: 1,
+            originalUniversity: 1,
+            universityMatchConfidence: 1,
+            universityMatchType: 1
+          }
         }
       );
-
       return null;
     }
   } catch (error) {
-    console.error(`[updateUserUniversityInUserScore] Error:`, error);
+    console.error(`[University] Error:`, error);
     throw error;
   }
 };
 
-/* ==================================================
-   UPDATE USER EDUCATION SCORE
-================================================== */
+// Keep your existing updateUserEducationScore function
 const updateUserEducationScore = async (userId) => {
   console.log(`[updateUserEducationScore] Starting for user: ${userId}`);
 
   const educations = await Education.find({ userId });
-  console.log(`[updateUserEducationScore] Found ${educations.length} education records`);
-
   const educationScore = calculateEducationPoints(educations);
-  console.log(`[updateUserEducationScore] Calculated educationScore: ${educationScore}`);
 
-  // Update User model's experienceIndex
   await User.findByIdAndUpdate(userId, {
     "experienceIndex.educationScore": educationScore,
   });
-  console.log(`[updateUserEducationScore] Updated User model`);
 
-  // ✅ Update university in UserScore model (not User model)
+  // Update university with global matching
   const university = await updateUserUniversityInUserScore(userId);
-  console.log(`[updateUserEducationScore] Updated university in UserScore: ${university}`);
 
-  // Recalculate overall user score (this will sync UserScore with all data)
-  console.log(`[updateUserEducationScore] Triggering recalculateUserScore`);
   await recalculateUserScore(userId);
-  console.log(`[updateUserEducationScore] Recalculate completed`);
 
   return educationScore;
 };
@@ -315,24 +319,83 @@ exports.getStudentsBySchool = async (req, res) => {
       });
     }
 
-    // Find education records matching school name (case-insensitive)
-    const students = await Education.find({
-      schoolName: { $regex: schoolName, $options: "i" },
+    // Find best matching university
+    const match = await universityMatching.findBestMatch(schoolName);
+
+    // Search in UserScore (which stores normalized names)
+    const searchQuery = match.confidence > 0.7
+      ? match.matchedName
+      : schoolName;
+
+    const students = await UserScore.find({
+      university: { $regex: searchQuery, $options: "i" }
     })
       .populate("userId", "firstname lastname email avatar")
-      .sort({ educationScore: -1 })  // populate user details
+      .sort({ hireabilityIndex: -1 })
       .lean();
+
+    // Remove duplicates by user
+    const uniqueStudents = [];
+    const seenUserIds = new Set();
+
+    students.forEach(student => {
+      if (student.userId && !seenUserIds.has(student.userId._id.toString())) {
+        seenUserIds.add(student.userId._id.toString());
+        uniqueStudents.push(student);
+      }
+    });
 
     return res.status(200).json({
       success: true,
-      count: students.length,
-      data: students,
+      count: uniqueStudents.length,
+      searchMetadata: {
+        originalQuery: schoolName,
+        matchedName: match.matchedName,
+        confidence: match.confidence,
+        matchType: match.matchType
+      },
+      data: uniqueStudents,
     });
+
   } catch (error) {
     console.error("❌ GET STUDENTS BY SCHOOL ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server Error",
     });
+  }
+};
+
+exports.searchUniversities = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.length < 2) {
+      return res.json({ suggestions: [] });
+    }
+
+    // Search in our database
+    const universities = await University.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { normalizedName: { $regex: query, $options: 'i' } }
+      ]
+    }).limit(20);
+
+    // Also try API in background for new universities
+    universitySync.searchUniversities(query).catch(console.error);
+
+    res.json({
+      success: true,
+      suggestions: universities.map(u => ({
+        name: u.name,
+        country: u.country,
+        matchType: 'database'
+      }))
+    });
+
+  } catch (error) {
+    console.error("Search error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
