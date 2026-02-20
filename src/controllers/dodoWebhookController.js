@@ -186,28 +186,40 @@ exports.handleDodoWebhook = async (req, res) => {
       subscription.currency = data.settlement_currency || data.currency || "INR";
       subscription.currentPeriodStart = new Date();
       subscription.dodoPaymentId = paymentId;
+
+       subscription.currentPeriodStart = new Date();
       
       // Calculate period end based on billing period
       const now = Date.now();
+      // if (subscription.billingPeriod === "monthly") {
+      //   subscription.currentPeriodEnd = new Date(now + 30 * 24 * 60 * 60 * 1000);
+      // } else if (subscription.billingPeriod === "yearly") {
+      //   subscription.currentPeriodEnd = new Date(now + 365 * 24 * 60 * 60 * 1000);
+      // } else {
+      //   // Default to 30 days if billing period not specified
+      //   subscription.currentPeriodEnd = new Date(now + 30 * 24 * 60 * 60 * 1000);
+      // }
       if (subscription.billingPeriod === "monthly") {
-        subscription.currentPeriodEnd = new Date(now + 30 * 24 * 60 * 60 * 1000);
-      } else if (subscription.billingPeriod === "yearly") {
-        subscription.currentPeriodEnd = new Date(now + 365 * 24 * 60 * 60 * 1000);
-      } else {
-        // Default to 30 days if billing period not specified
-        subscription.currentPeriodEnd = new Date(now + 30 * 24 * 60 * 60 * 1000);
-      }
+    subscription.currentPeriodEnd = new Date(
+      now + 30 * 24 * 60 * 60 * 1000
+    );
+  } else if (subscription.billingPeriod === "yearly") {
+    subscription.currentPeriodEnd = new Date(
+      now + 365 * 24 * 60 * 60 * 1000
+    );
+  } else if (subscription.billingPeriod === "oneTime") {
+    // ⭐ lifetime access
+    subscription.currentPeriodEnd = null;
+  } else {
+    console.warn("⚠️ Unknown billing period:", subscription.billingPeriod);
+    subscription.currentPeriodEnd = null;
+  }
       
       // Add invoice to history
       subscription.invoices.push(invoiceEntry);
       
       // Save subscription
       await subscription.save();
-
-      if (subscription.plan?.features) {
-        subscription.features = subscription.plan.features;
-        await subscription.save();
-      }
 
       console.log("✅ PAYMENT SUCCESS - Subscription activated:", {
         subscriptionId: subscription._id,
