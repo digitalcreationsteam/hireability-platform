@@ -1136,26 +1136,104 @@ exports.forgotPasswordNew = async (req, res) => {
     // 10 min
     await user.save({ validateBeforeSave: false });
 
+    // Create HTML email template
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Password Reset OTP</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f7fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fa;padding:20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td style="background:#4a6cf7;color:#ffffff;padding:25px;text-align:center;">
+              <h1 style="margin:0;font-size:26px;">Password Reset Request</h1>
+              <p style="margin-top:8px;font-size:15px;opacity:0.9;">
+                Your OTP for password reset
+              </p>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:30px;color:#333;">
+              <p style="font-size:18px;margin-bottom:15px;">
+                Hello <strong style="color:#4a6cf7;">${user.firstname || 'User'}</strong>,
+              </p>
+
+              <p style="font-size:15px;line-height:1.6;color:#555;">
+                We received a request to reset your password for your <strong>UnitechCloud</strong> account.
+                Please use the following OTP to reset your password:
+              </p>
+
+              <!-- OTP BOX -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                <tr>
+                  <td align="center">
+                    <div style="
+                      background:#f0f4ff;
+                      border:2px dashed #4a6cf7;
+                      border-radius:10px;
+                      padding:20px;
+                      font-size:36px;
+                      font-weight:bold;
+                      letter-spacing:8px;
+                      color:#4a6cf7;
+                      display:inline-block;
+                    ">
+                      ${otp}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:14px;color:#777;">
+                ⏰ This OTP will expire in <strong>10 minutes</strong>.
+              </p>
+
+              <p style="font-size:13px;color:#999;margin-top:25px;">
+                If you did not request this password reset, you can safely ignore this email.
+                Your password will remain unchanged.
+              </p>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background:#f8f9fa;text-align:center;padding:15px;font-size:12px;color:#777;">
+              © ${new Date().getFullYear()} UnitechCloud. All rights reserved.<br>
+              This is an automated email, please do not reply.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
     await sendEmail({
       to: user.email,
-      subject: "Password Reset OTP",
-      html: `<h3>Your OTP is: ${otp}</h3>`,
+      subject: "Password Reset OTP - UnitechCloud",
+      html: htmlTemplate,
     });
+    
     console.log("✅ OTP GENERATED:", otp);
-    console.log("✅ Email sended to:", email);
+    console.log("✅ Email sent to:", email);
 
     res.json({
       success: true,
       message: "OTP sent to email",
     });
   } catch (error) {
-    // catch (error) {
-    //   console.error("❌ Forgot password error:", error);
-    //   res.status(500).json({
-    //     success: false,
-    //     message: "Unable to send reset code",
-    //   });
-    // }
     console.error("❌ EMAIL ERROR:", error.message);
     res.status(500).json({
       success: false,

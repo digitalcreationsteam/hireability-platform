@@ -281,16 +281,52 @@ const caseQuestionModel = require("../models/caseQuestionModel")
 1️⃣ GET ALL ACTIVE CASES
 ========================================================
 */
+/*
+========================================================
+1️⃣ GET ALL ACTIVE CASES with attempt info
+========================================================
+*/
 exports.getCases = async (req, res) => {
   try {
+    const userId = req.user._id; // Get user ID from auth middleware
+    
     const cases = await CaseStudy.find({ isActive: true })
-      .select("title slug totalQuestions maxAttempts")
+      .select("title slug totalQuestions maxAttempts description openingImageUrl revealImageUrl") // Added description here
 
-    res.json(cases)
+    // Get all attempts for this user
+    const userAttempts = await CaseAttempt.find({
+      userId,
+      caseStudyId: { $in: cases.map(c => c._id) }
+    });
+
+    // Map cases with attempt information
+    const casesWithAttemptInfo = cases.map(caseStudy => {
+      const caseAttempts = userAttempts.filter(
+        attempt => attempt.caseStudyId.toString() === caseStudy._id.toString()
+      );
+      
+      const completedAttempts = caseAttempts.filter(attempt => attempt.isCompleted);
+      const activeAttempt = caseAttempts.find(attempt => !attempt.isCompleted);
+      
+      return {
+        ...caseStudy.toObject(),
+        attemptInfo: {
+          totalAttempts: caseAttempts.length,
+          completedAttempts: completedAttempts.length,
+          remainingAttempts: Math.max(0, caseStudy.maxAttempts - caseAttempts.length),
+          maxAttemptsReached: caseAttempts.length >= caseStudy.maxAttempts,
+          hasActiveAttempt: !!activeAttempt,
+          activeAttemptId: activeAttempt?._id || null,
+          isSubmitted: completedAttempts.length > 0
+        }
+      };
+    });
+
+    res.json(casesWithAttemptInfo);
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
 /*
 ========================================================

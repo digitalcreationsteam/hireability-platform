@@ -44,7 +44,7 @@ router.get("/:caseId/questions/:number", protect, caseController.getQuestion)
 router.post("/:caseId/questions/:questionId/answer", protect, caseController.submitAnswer)
 router.post("/:caseId/retry", protect, caseController.retryCase)
 router.get("/:caseId/reveal", protect, caseController.getReveal)
- router.post("/attempt/:attemptId/submit",protect, caseController.submitAttempt);
- router.get("/:userId/weekly", protect, caseController.getWeeklyAttempts);
+router.post("/attempt/:attemptId/submit", protect, caseController.submitAttempt);
+router.get("/:userId/weekly", protect, caseController.getWeeklyAttempts);
 
 module.exports = router
