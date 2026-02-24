@@ -43,6 +43,13 @@ const userScoreSchema = new mongoose.Schema({
   cityRank: Number,
   universityRank: Number,
 
+  // Add to userScoreSchema fields:
+  globalPercentile: { type: Number, default: 0 },
+  countryPercentile: { type: Number, default: 0 },
+  statePercentile: { type: Number, default: 0 },
+  cityPercentile: { type: Number, default: 0 },
+  universityPercentile: { type: Number, default: 0 },
+
   // Domain-specific scores
   domainScores: [{
     domainId: {

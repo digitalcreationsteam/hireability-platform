@@ -159,11 +159,18 @@ exports.getDashboardByUserId = async (req, res) => {
 
       rank: {
         globalRank: userScore?.globalRank || 0,
+        globalPercentile: userScore?.globalPercentile ?? null,
         countryRank: userScore?.countryRank || 0,
+        countryPercentile: userScore?.countryPercentile ?? null,
         stateRank: userScore?.stateRank || 0,
+        statePercentile: userScore?.statePercentile ?? null,
         cityRank: userScore?.cityRank || 0,
-        universityRank: userScore?.universityRank || 0
+        cityPercentile: userScore?.cityPercentile ?? null,
+        universityRank: userScore?.universityRank || 0,
+        universityPercentile: userScore?.universityPercentile ?? null,
       },
+
+      // Remove totalCounts entirely - no longer needed on frontend
 
       // NEW: Add total counts for percentile calculation
       totalCounts: {

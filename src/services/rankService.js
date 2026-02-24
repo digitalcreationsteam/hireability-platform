@@ -217,6 +217,19 @@ async function updateDomainCohortRanks(domainId, cohort) {
 /**
  * Recalculate cohort-based ranks for a specific domain + experience cohort
  */
+/**
+ * Helper: calculate percentile correctly
+ * Rank 1 of 1 → 100%, Rank 1 of 10 → 100%, Rank 10 of 10 → 0%
+ */
+function calculatePercentile(rank, total) {
+  if (!total || total <= 0) return 0;
+  if (total === 1) return 100;
+  return Math.round(((total - rank) / (total - 1)) * 100);
+}
+
+/**
+ * Recalculate cohort-based ranks for a specific domain + experience cohort
+ */
 exports.recalculateCohortRanks = async (domainId, cohort) => {
   try {
     console.log(`Recalculating cohort ranks for Domain: ${domainId}, Cohort: ${cohort}`);
@@ -226,111 +239,167 @@ exports.recalculateCohortRanks = async (domainId, cohort) => {
       experienceCohort: cohort
     };
 
-    /* GLOBAL RANK */
+    /* --------------------------------
+       GLOBAL RANK + PERCENTILE
+    -------------------------------- */
     const globalUsers = await UserScore.find(filter)
       .sort({ hireabilityIndex: -1 })
       .lean();
 
-    const globalBulkOps = globalUsers.map((user, index) => ({
-      updateOne: {
-        filter: { _id: user._id },
-        update: { globalRank: index + 1 }
-      }
-    }));
+    const globalTotal = globalUsers.length;
+
+    const globalBulkOps = globalUsers.map((user, index) => {
+      const rank = index + 1;
+      return {
+        updateOne: {
+          filter: { _id: user._id },
+          update: {
+            $set: {
+              globalRank: rank,
+              globalPercentile: calculatePercentile(rank, globalTotal)
+            }
+          }
+        }
+      };
+    });
 
     if (globalBulkOps.length > 0) {
       await UserScore.bulkWrite(globalBulkOps);
     }
 
-    /* COUNTRY RANK */
+    /* --------------------------------
+       COUNTRY RANK + PERCENTILE
+    -------------------------------- */
     const countries = await UserScore.distinct("country", filter);
 
     for (const country of countries) {
       if (!country) continue;
 
-      const countryFilter = { ...filter, country };
-      const users = await UserScore.find(countryFilter)
+      const users = await UserScore.find({ ...filter, country })
         .sort({ hireabilityIndex: -1 })
         .lean();
 
-      const countryBulkOps = users.map((user, index) => ({
-        updateOne: {
-          filter: { _id: user._id },
-          update: { countryRank: index + 1 }
-        }
-      }));
+      const total = users.length;
 
-      if (countryBulkOps.length > 0) {
-        await UserScore.bulkWrite(countryBulkOps);
+      const bulkOps = users.map((user, index) => {
+        const rank = index + 1;
+        return {
+          updateOne: {
+            filter: { _id: user._id },
+            update: {
+              $set: {
+                countryRank: rank,
+                countryPercentile: calculatePercentile(rank, total)
+              }
+            }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
       }
     }
 
-    /* STATE RANK */
+    /* --------------------------------
+       STATE RANK + PERCENTILE
+    -------------------------------- */
     const states = await UserScore.distinct("state", filter);
 
     for (const state of states) {
       if (!state) continue;
 
-      const stateFilter = { ...filter, state };
-      const users = await UserScore.find(stateFilter)
+      const users = await UserScore.find({ ...filter, state })
         .sort({ hireabilityIndex: -1 })
         .lean();
 
-      const stateBulkOps = users.map((user, index) => ({
-        updateOne: {
-          filter: { _id: user._id },
-          update: { stateRank: index + 1 }
-        }
-      }));
+      const total = users.length;
 
-      if (stateBulkOps.length > 0) {
-        await UserScore.bulkWrite(stateBulkOps);
+      const bulkOps = users.map((user, index) => {
+        const rank = index + 1;
+        return {
+          updateOne: {
+            filter: { _id: user._id },
+            update: {
+              $set: {
+                stateRank: rank,
+                statePercentile: calculatePercentile(rank, total)
+              }
+            }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
       }
     }
 
-    /* CITY RANK */
+    /* --------------------------------
+       CITY RANK + PERCENTILE
+    -------------------------------- */
     const cities = await UserScore.distinct("city", filter);
 
     for (const city of cities) {
       if (!city) continue;
 
-      const cityFilter = { ...filter, city };
-      const users = await UserScore.find(cityFilter)
+      const users = await UserScore.find({ ...filter, city })
         .sort({ hireabilityIndex: -1 })
         .lean();
 
-      const cityBulkOps = users.map((user, index) => ({
-        updateOne: {
-          filter: { _id: user._id },
-          update: { cityRank: index + 1 }
-        }
-      }));
+      const total = users.length;
 
-      if (cityBulkOps.length > 0) {
-        await UserScore.bulkWrite(cityBulkOps);
+      const bulkOps = users.map((user, index) => {
+        const rank = index + 1;
+        return {
+          updateOne: {
+            filter: { _id: user._id },
+            update: {
+              $set: {
+                cityRank: rank,
+                cityPercentile: calculatePercentile(rank, total)
+              }
+            }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
       }
     }
 
-    /* UNIVERSITY RANK */
+    /* --------------------------------
+       UNIVERSITY RANK + PERCENTILE
+    -------------------------------- */
     const universities = await UserScore.distinct("university", filter);
 
     for (const university of universities) {
       if (!university) continue;
 
-      const universityFilter = { ...filter, university };
-      const users = await UserScore.find(universityFilter)
+      const users = await UserScore.find({ ...filter, university })
         .sort({ hireabilityIndex: -1 })
         .lean();
 
-      const universityBulkOps = users.map((user, index) => ({
-        updateOne: {
-          filter: { _id: user._id },
-          update: { universityRank: index + 1 }
-        }
-      }));
+      const total = users.length;
 
-      if (universityBulkOps.length > 0) {
-        await UserScore.bulkWrite(universityBulkOps);
+      const bulkOps = users.map((user, index) => {
+        const rank = index + 1;
+        return {
+          updateOne: {
+            filter: { _id: user._id },
+            update: {
+              $set: {
+                universityRank: rank,
+                universityPercentile: calculatePercentile(rank, total)
+              }
+            }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
       }
     }
 
