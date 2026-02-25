@@ -25,11 +25,13 @@ const certificationSchema = new mongoose.Schema({
   credentialLink: {
     type: String,
     default: null,
+    required: true,
   },
 
   certificateFileUrl: {
     type: String,   // Cloud URL / local URL
     default: null,
+    required: true
   },
 
   certificationScore: {

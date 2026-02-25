@@ -446,6 +446,16 @@ router.get(
   assessmentController.getLatestResult
 );
 
+//new routes
+router.get("/assessment/result", assessmentController.getResultByAttemptId);
+
+router.get(
+  "/assessment/result-with-experience",
+  protect,
+  authorizeRoles("student"),
+  assessmentController.getAssessmentResultWithExperience
+);
+
 
 router.post("/assessment/violation/:attemptId", protect, authorizeRoles("student"), assessmentController.reportViolation);
 // router.get("/assessment/:attemptId/integrity",protect,  authorizeRoles("student"),  assessmentController.getIntegrity);
