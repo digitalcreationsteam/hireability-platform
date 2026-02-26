@@ -1,6 +1,6 @@
 const Subscription = require("../models/subscriptionModel");
 const SubscriptionPlan = require("../models/subscriptionPlanModel");
-const UserScore = require("../models/UserScoreModel");
+const UserScore = require("../models/userScoreModel");
 const User = require("../models/userModel");
 const crypto = require("crypto");
 
