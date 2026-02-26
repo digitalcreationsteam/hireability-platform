@@ -103,4 +103,8 @@ userScoreSchema.index({ primaryDomain: 1, experienceCohort: 1, city: 1, hireabil
 userScoreSchema.index({ primaryDomain: 1, experienceCohort: 1, university: 1, hireabilityIndex: -1 });
 userScoreSchema.index({ "domainScores.domainId": 1, "domainScores.skillScore": -1 });
 
-module.exports = mongoose.model("UserScore", userScoreSchema);
+// module.exports = mongoose.model("UserScore", userScoreSchema);
+
+module.exports =
+  mongoose.models.UserScore ||
+  mongoose.model("UserScore", userScoreSchema);
