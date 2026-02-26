@@ -153,13 +153,23 @@ exports.createMultipleWorkExperience = async (req, res) => {
 
     const { workExperiences } = req.body;
 
+    // ✅ Guard: reject if missing or empty
     if (!Array.isArray(workExperiences) || workExperiences.length === 0) {
       return res.status(400).json({
         message: "workExperiences must be a non-empty array",
       });
     }
 
-    // ✅ Attach userId + calculate workScore per experience
+    // ✅ Guard: reject if any entry has missing required fields
+    const hasInvalidEntry = workExperiences.some(
+      (exp) => !exp.jobTitle || !exp.companyName || !exp.startYear || !exp.startMonth
+    );
+    if (hasInvalidEntry) {
+      return res.status(400).json({
+        message: "Each experience must have jobTitle, companyName, startYear and startMonth",
+      });
+    }
+
     const workDocs = workExperiences.map(exp => ({
       ...exp,
       userId,
@@ -167,12 +177,8 @@ exports.createMultipleWorkExperience = async (req, res) => {
     }));
 
     const insertedWork = await WorkExperience.insertMany(workDocs);
-
     const totalScore = await updateUserWorkScore(userId);
-
-    // Get the updated user score with years of experience
     const userScore = await UserScore.findOne({ userId });
-
     const completionStatus = await getCompletionStatus(userId);
     const navigation = calculateNavigation(completionStatus);
 
