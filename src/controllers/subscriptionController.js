@@ -1,5 +1,6 @@
 const Subscription = require("../models/subscriptionModel");
 const SubscriptionPlan = require("../models/subscriptionPlanModel");
+const UserScore = require("../models/UserScoreModel");
 const User = require("../models/userModel");
 const crypto = require("crypto");
 
@@ -294,6 +295,75 @@ const PlanFeature = require("../models/planFeatureModel");
 // GET SUBSCRIPTION BY ID
 // =====================================
 
+// exports.getAllPlans = async (req, res) => {
+//   try {
+//     const userId = req.user?.id;
+
+//     let currency = "USD";
+
+//     if (userId) {
+//       const user = await User.findById(userId)
+//         .select("country")
+//         .lean();
+
+//       if (user?.country === "India") {
+//         currency = "INR";
+//       }
+//     }
+
+//     const plans = await SubscriptionPlan.find({
+//       currency,
+//       isActive: true,
+//     })
+//       .sort({ order: 1 })
+//       .lean();
+
+//     if (!plans.length) {
+//       return res.status(200).json({
+//         success: true,
+//         currency,
+//         count: 0,
+//         data: [],
+//       });
+//     }
+
+//     const planIds = plans.map(plan => plan._id);
+
+//     const planFeatures = await PlanFeature.find({
+//       subscriptionPlanId: { $in: planIds },
+//     }).lean();
+
+//     // 🔥 Create fast lookup map
+//     const featureMap = {};
+
+//     planFeatures.forEach(feature => {
+//       featureMap[feature.subscriptionPlanId.toString()] =
+//         feature.features;
+//     });
+
+//     const plansWithFeatures = plans.map(plan => ({
+//       ...plan,
+//       features:
+//         featureMap[plan._id.toString()] || [],
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       currency,
+//       count: plansWithFeatures.length,
+//       data: plansWithFeatures,
+//     });
+
+//   } catch (error) {
+//     console.error("❌ GET PLANS ERROR:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Unable to fetch plans",
+//     });
+//   }
+// };
+
+
 exports.getAllPlans = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -301,11 +371,12 @@ exports.getAllPlans = async (req, res) => {
     let currency = "USD";
 
     if (userId) {
-      const user = await User.findById(userId)
+      // 🔥 Check country from UserScore instead of User
+      const userScore = await UserScore.findOne({ userId })
         .select("country")
         .lean();
 
-      if (user?.country === "India") {
+      if (userScore?.country === "India") {
         currency = "INR";
       }
     }
