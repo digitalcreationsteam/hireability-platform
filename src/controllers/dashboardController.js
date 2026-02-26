@@ -9,7 +9,7 @@ const Project = require("../models/projectModel");
 const UserScore = require("../models/userScoreModel");
 const UserDomainSkill = require("../models/userDomainSkillModel");
 const UserDocument = require("../models/userDocumentModel");
-const userDomainSkill = require("../models/userDomainSkillModel");
+// const userDomainSkill = require("../models/userDomainSkillModel");
 const testAttempt = require("../models/testAttemptModel");
 
 // controllers/dashboardController.js - Updated getDashboardByUserId
@@ -48,7 +48,10 @@ exports.getDashboardByUserId = async (req, res) => {
         .sort({ experienceIndexScore: -1 })
         .select("experienceIndexScore")
         .lean(),
-      UserDomainSkill.find({ userId }).lean(),
+      // UserDomainSkill.find({ userId }).lean(),
+      UserDomainSkill.find({ userId })
+        .populate("domainId", "name")
+        .lean(),
       UserDocument.findOne({ userId }).lean(),
       testAttempt
         .findOne({ userId })
@@ -123,6 +126,8 @@ exports.getDashboardByUserId = async (req, res) => {
        FLATTEN SKILLS
     -------------------------------- */
     const skills = skillDocs?.flatMap(doc => doc.skills) || [];
+    const jobDomainName =
+  skillDocs?.[0]?.domainId?.name || "Professional";
 
     /* --------------------------------
        RESPONSE
@@ -190,8 +195,12 @@ exports.getDashboardByUserId = async (req, res) => {
         profileUrl: documents?.profileUrl || null
       },
 
+      // jobdomain: {
+      //   domain: documents?.jobdomain || "Professional"
+      // },
+      
       jobdomain: {
-        domain: documents?.jobdomain || "Professional"
+        domain: jobDomainName
       },
       integrity: {
         score: latestAttempt?.integrity?.score ?? 100,

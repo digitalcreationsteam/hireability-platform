@@ -31,7 +31,7 @@ const otpEmailTemplate = ({ firstname, otp }) => {
               </p>
 
               <p style="font-size:15px;line-height:1.6;color:#555;">
-                Thank you for signing up at <strong>UnitechCloud</strong>.
+                Thank you for signing up at <strong>UniTalent.Cloud</strong>.
                 Please use the following OTP to verify your email address:
               </p>
 
@@ -69,7 +69,7 @@ const otpEmailTemplate = ({ firstname, otp }) => {
           <!-- FOOTER -->
           <tr>
             <td style="background:#f8f9fa;text-align:center;padding:15px;font-size:12px;color:#777;">
-              © ${new Date().getFullYear()} UnitechCloud. All rights reserved.<br>
+              © ${new Date().getFullYear()} UniTalent.Cloud. All rights reserved.<br>
               This is an automated email, please do not reply.
             </td>
           </tr>

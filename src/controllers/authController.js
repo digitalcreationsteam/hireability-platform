@@ -1168,7 +1168,7 @@ exports.forgotPasswordNew = async (req, res) => {
               </p>
 
               <p style="font-size:15px;line-height:1.6;color:#555;">
-                We received a request to reset your password for your <strong>UnitechCloud</strong> account.
+                We received a request to reset your password for your <strong>UniTalent.Cloud</strong> account.
                 Please use the following OTP to reset your password:
               </p>
 
@@ -1207,7 +1207,7 @@ exports.forgotPasswordNew = async (req, res) => {
           <!-- FOOTER -->
           <tr>
             <td style="background:#f8f9fa;text-align:center;padding:15px;font-size:12px;color:#777;">
-              © ${new Date().getFullYear()} UnitechCloud. All rights reserved.<br>
+              © ${new Date().getFullYear()} UniTalent.Cloud. All rights reserved.<br>
               This is an automated email, please do not reply.
             </td>
           </tr>
@@ -1222,7 +1222,7 @@ exports.forgotPasswordNew = async (req, res) => {
 
     await sendEmail({
       to: user.email,
-      subject: "Password Reset OTP - UnitechCloud",
+      subject: "Password Reset OTP - UniTalent.Cloud",
       html: htmlTemplate,
     });
     

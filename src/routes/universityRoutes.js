@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const educationController = require("../controllers/educationController");
 const UniversitySyncService = require("../services/universitySyncService");
+const universityController = require("../controllers/universityController")
 
 // Search universities (for autocomplete)
 router.get("/search", educationController.searchUniversities);
@@ -35,5 +36,7 @@ router.get("/:name", async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+router.post("/add-university", universityController.addUniversity);
 
 module.exports = router;
