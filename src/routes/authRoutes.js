@@ -18,6 +18,7 @@ const logout = require("../controllers/authController").logout;
 const getUserStatus = require("../controllers/authController").getUserStatus;
 const verifyRouteEndpoint = require("../controllers/authController").verifyRouteEndpoint;
 const checkEmailVerification = require("../controllers/authController").checkEmailVerification;
+const skipStep = require("../controllers/authController").skipStep;
 const otpEmailTemplate = require("./../utils/otpEmailTemplate")
 const sendEmail = require("./../utils/sendEmail");
 
@@ -71,6 +72,7 @@ router.get('/debug-user/:email', async (req, res) => {
 
 router.post('/verify-otp', verifyOTP);
 router.post('/resend-otp', resendOTP);
+router.post("/skip-step", auth, skipStep);
 
 /* ✅ NAVIGATION STATUS (Protected routes) */
 router.get("/user-status", auth, getUserStatus);

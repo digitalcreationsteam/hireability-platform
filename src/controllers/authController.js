@@ -56,23 +56,10 @@ const FRONTEND_ONLY_STEPS = [
 // HELPER: Get completion status from database
 // ============================================
 const getCompletionStatus = async (userId) => {
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🔍 getCompletionStatus - Input userId:", userId);
-  console.log("🔍 userId type:", typeof userId);
-
-  // ✅ Ensure userId is ObjectId
-  let objectId;
-  if (mongoose.Types.ObjectId.isValid(userId)) {
-    objectId = userId instanceof mongoose.Types.ObjectId
-      ? userId
-      : new mongoose.Types.ObjectId(userId);
-  } else {
-    throw new Error("Invalid userId format");
-  }
-
-  console.log("🔍 Converted to ObjectId:", objectId);
+  let objectId = new mongoose.Types.ObjectId(userId);
 
   const [
+    user,          // ← add this
     userDocument,
     demographics,
     education,
@@ -84,6 +71,7 @@ const getCompletionStatus = async (userId) => {
     userDomainSkill,
     assessment,
   ] = await Promise.all([
+    User.findById(objectId).select("skippedSteps"),  // ← add this
     UserDocument.findOne({ userId: objectId }),
     Demographics.findOne({ userId: objectId }),
     Education.findOne({ userId: objectId }),
@@ -96,37 +84,16 @@ const getCompletionStatus = async (userId) => {
     SkillAssessment.findOne({ userId: objectId }),
   ]);
 
-  console.log("📄 UserDocument found:", !!userDocument);
-  if (userDocument) {
-    console.log("📄 UserDocument details:", {
-      _id: userDocument._id,
-      userId: userDocument.userId,
-      resumeUrl: userDocument.resumeUrl,
-      resumeOriginalName: userDocument.resumeOriginalName,
-    });
-  } else {
-    console.log("❌ NO UserDocument found for userId:", objectId);
-
-    // Debug: Check what's in the database
-    const count = await UserDocument.countDocuments();
-    console.log("📊 Total UserDocuments in database:", count);
-
-    if (count > 0) {
-      const sample = await UserDocument.findOne();
-      console.log("📄 Sample document userId type:", typeof sample.userId);
-      console.log("📄 Sample document userId:", sample.userId);
-    }
-  }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  const skipped = user?.skippedSteps || [];
 
   const status = {
     paywall: !!subscription,
     resume: !!userDocument?.resumeUrl,
     demographics: !!demographics,
     education: !!education,
-    experience: !!experience,
-    certifications: !!certifications,
-    awards: !!awards,
+    experience: !!experience || skipped.includes("experience"),  // ← 
+    certifications: !!certifications || skipped.includes("certifications"),  // ←
+    awards: !!awards || skipped.includes("awards"),  // ←
     projects: !!projects,
     "job-domain": !!userDomainSkill?.domainId,
     skills: (userDomainSkill?.skills?.length || 0) > 0,
@@ -134,8 +101,47 @@ const getCompletionStatus = async (userId) => {
     "assessment-results": !!assessment?.completedAt,
   };
 
-  console.log("✅ Completion status:", status);
   return status;
+};
+
+// ============================================
+// SKIP STEP - Creates minimal record so step 
+// is marked complete and user skips it on login
+// ============================================
+exports.skipStep = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { step } = req.body;
+
+    const SKIPPABLE_STEPS = ["experience", "certifications", "awards"];
+
+    if (!SKIPPABLE_STEPS.includes(step)) {
+      return res.status(400).json({
+        success: false,
+        message: "This step cannot be skipped",
+      });
+    }
+
+    // Just push to skippedSteps array, no dummy records
+    await User.findByIdAndUpdate(userId, {
+      $addToSet: { skippedSteps: step }, // addToSet avoids duplicates
+    });
+
+    const status = await getCompletionStatus(userId);
+    const navigation = calculateNavigation(status);
+
+    res.status(200).json({
+      success: true,
+      message: `${step} skipped successfully`,
+      navigation,
+    });
+  } catch (error) {
+    console.error("❌ skipStep error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to skip step",
+    });
+  }
 };
 
 // ================= NAVIGATION =================
@@ -1225,7 +1231,7 @@ exports.forgotPasswordNew = async (req, res) => {
       subject: "Password Reset OTP - UnitechCloud",
       html: htmlTemplate,
     });
-    
+
     console.log("✅ OTP GENERATED:", otp);
     console.log("✅ Email sent to:", email);
 
