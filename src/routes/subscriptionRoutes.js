@@ -11,7 +11,8 @@ const {
   getCurrentSubscription,
   checkSubscriptionStatus,
   dodoRedirectHelper, // ✅ ADD THIS
-  getSubscriptionById
+  getSubscriptionById,
+  getPlansByCurrency
 } = require("../controllers/subscriptionController");
 const { initiateDodoPayment } = require("../controllers/paymentController");
 const { downloadInvoice } = require("../controllers/invoiceController");
@@ -27,6 +28,7 @@ const router = express.Router();
 
 // Get all available plans (public)
 router.get("/plans",auth, getAllPlans);
+router.get("/plans/by-currency", auth, getPlansByCurrency);
 
 // Create subscription / Generate payment order
 router.post(

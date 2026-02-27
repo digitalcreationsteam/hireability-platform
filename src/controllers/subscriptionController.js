@@ -185,184 +185,6 @@ exports.initiateDodoPayment = async (req, res) => {
   }
 };
 
-// =====================================
-// GET ALL PLANS
-// =====================================
-
-// exports.getAllPlans = async (req, res) => {
-//   try {
-//     const userId = req.user?.id;
-
-//     let currency = "USD"; // default currency
-
-//     if (userId) {
-//       const user = await User.findById(userId)
-//         .select("country")
-//         .lean();
-
-//       if (user?.country === "IN") {
-//         currency = "INR";
-//       }
-//     }
-
-//     const plans = await SubscriptionPlan.find({
-//       currency,
-//       isActive: true,
-//     })
-//       .sort({ order: 1 })
-//       .lean();
-
-//     res.status(200).json({
-//       success: true,
-//       currency,
-//       count: plans.length,
-//       data: plans,
-//     });
-
-//   } catch (error) {
-//     console.error("❌ GET PLANS ERROR:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Unable to fetch plans",
-//     });
-//   }
-// };
-
-const PlanFeature = require("../models/planFeatureModel");
-
-// exports.getAllPlans = async (req, res) => {
-//   try {
-//     const userId = req.user?.id;
-
-//     let currency = "USD"; // default currency
-
-//     // 🌍 Detect user currency
-//     if (userId) {
-//       const user = await User.findById(userId)
-//         .select("country")
-//         .lean();
-
-//       if (user?.country === "IN") {
-//         currency = "INR";
-//       }
-//     }
-
-//     // 🟢 Get plans based on currency
-//     const plans = await SubscriptionPlan.find({
-//       currency,
-//       isActive: true,
-//     })
-//       .sort({ order: 1 })
-//       .lean();
-
-//     const planIds = plans.map(plan => plan._id);
-
-//     // 🟢 Get all features for those plans
-//     const planFeatures = await PlanFeature.find({
-//       subscriptionPlanId: { $in: planIds }
-//     }).lean();
-
-//     // 🟢 Merge features into plans
-//     const plansWithFeatures = plans.map(plan => {
-//       const featureData = planFeatures.find(
-//         f => f.subscriptionPlanId.toString() === plan._id.toString()
-//       );
-
-//       return {
-//         ...plan,
-//         features: featureData ? featureData.features : []
-//       };
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       currency,
-//       count: plansWithFeatures.length,
-//       data: plansWithFeatures,
-//     });
-
-//   } catch (error) {
-//     console.error("❌ GET PLANS ERROR:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Unable to fetch plans",
-//     });
-//   }
-// };
-
-
-// =====================================
-// GET SUBSCRIPTION BY ID
-// =====================================
-
-// exports.getAllPlans = async (req, res) => {
-//   try {
-//     const userId = req.user?.id;
-
-//     let currency = "USD";
-
-//     if (userId) {
-//       const user = await User.findById(userId)
-//         .select("country")
-//         .lean();
-
-//       if (user?.country === "India") {
-//         currency = "INR";
-//       }
-//     }
-
-//     const plans = await SubscriptionPlan.find({
-//       currency,
-//       isActive: true,
-//     })
-//       .sort({ order: 1 })
-//       .lean();
-
-//     if (!plans.length) {
-//       return res.status(200).json({
-//         success: true,
-//         currency,
-//         count: 0,
-//         data: [],
-//       });
-//     }
-
-//     const planIds = plans.map(plan => plan._id);
-
-//     const planFeatures = await PlanFeature.find({
-//       subscriptionPlanId: { $in: planIds },
-//     }).lean();
-
-//     // 🔥 Create fast lookup map
-//     const featureMap = {};
-
-//     planFeatures.forEach(feature => {
-//       featureMap[feature.subscriptionPlanId.toString()] =
-//         feature.features;
-//     });
-
-//     const plansWithFeatures = plans.map(plan => ({
-//       ...plan,
-//       features:
-//         featureMap[plan._id.toString()] || [],
-//     }));
-
-//     res.status(200).json({
-//       success: true,
-//       currency,
-//       count: plansWithFeatures.length,
-//       data: plansWithFeatures,
-//     });
-
-//   } catch (error) {
-//     console.error("❌ GET PLANS ERROR:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Unable to fetch plans",
-//     });
-//   }
-// };
-
 
 exports.getAllPlans = async (req, res) => {
   try {
@@ -426,6 +248,69 @@ exports.getAllPlans = async (req, res) => {
 
   } catch (error) {
     console.error("❌ GET PLANS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to fetch plans",
+    });
+  }
+};
+
+exports.getPlansByCurrency = async (req, res) => {
+  try {
+    const { currency } = req.query;
+
+    // ✅ Validate currency
+    if (!currency || !["USD", "INR"].includes(currency)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid currency. Allowed values: USD, INR",
+      });
+    }
+
+    const plans = await SubscriptionPlan.find({
+      currency,
+      isActive: true,
+    })
+      .sort({ order: 1 })
+      .lean();
+
+    if (!plans.length) {
+      return res.status(200).json({
+        success: true,
+        currency,
+        count: 0,
+        data: [],
+      });
+    }
+
+    const planIds = plans.map(plan => plan._id);
+
+    const planFeatures = await PlanFeature.find({
+      subscriptionPlanId: { $in: planIds },
+    }).lean();
+
+    // 🔥 Create lookup map
+    const featureMap = {};
+
+    planFeatures.forEach(feature => {
+      featureMap[feature.subscriptionPlanId.toString()] =
+        feature.features;
+    });
+
+    const plansWithFeatures = plans.map(plan => ({
+      ...plan,
+      features: featureMap[plan._id.toString()] || [],
+    }));
+
+    res.status(200).json({
+      success: true,
+      currency,
+      count: plansWithFeatures.length,
+      data: plansWithFeatures,
+    });
+
+  } catch (error) {
+    console.error("❌ GET PLANS BY CURRENCY ERROR:", error);
     res.status(500).json({
       success: false,
       message: "Unable to fetch plans",
