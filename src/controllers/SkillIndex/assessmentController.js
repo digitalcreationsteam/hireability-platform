@@ -4,7 +4,7 @@ const McqQuestion = require("../../models/mcqQuestionModel");
 const UserDomainSkill = require("../../models/userDomainSkillModel");
 const { recalculateUserScore } = require("../../services/recalculateUserScore");
 const SkillAssessment = require("../../models/SkillAssessmentModel");
-const UserScore =require("../../models/userScoreModel")
+const UserScore = require("../../models/userScoreModel")
 const Demographics = require("../../models/demographicsModel")
 const Education = require("../../models/educationModel")
 const { createAttempt } = require("./attemptEngine");
@@ -36,18 +36,18 @@ const getTopPercentile = (percentage) => {
 
 const getAchievementBadges = (percentage, integrityLevel) => {
   const badges = [];
-  
+
   // Score-based badges
   if (percentage >= 90) badges.push({ label: "🏆 Excellence Award", color: "primary" });
   else if (percentage >= 75) badges.push({ label: "⭐ High Achiever", color: "primary" });
   else if (percentage >= 60) badges.push({ label: "🎯 Proficient", color: "primary" });
   else if (percentage >= 45) badges.push({ label: "📈 On Track", color: "secondary" });
-  else badges.push({ label: "🌱 Growing", color: "secondary" });
-  
+  else badges.push({ label: "Growing", color: "secondary" });
+
   // Integrity-based badges
-  if (integrityLevel === "Excellent") badges.push({ label: "🛡️ Integrity Champion", color: "primary" });
+  if (integrityLevel === "Excellent") badges.push({ label: "Integrity Champion", color: "primary" });
   else if (integrityLevel === "Good") badges.push({ label: "✓ Trusted Tester", color: "secondary" });
-  
+
   return badges;
 };
 
@@ -56,7 +56,7 @@ const getMotivationalMessage = (percentage) => {
   if (percentage >= 75) return "✨ Excellent work! You're very close to mastery!";
   if (percentage >= 60) return "🎯 Great job! Keep pushing to the next level!";
   if (percentage >= 45) return "📈 Good progress! Practice makes perfect!";
-  return "🌱 Every expert was once a beginner. Keep learning!";
+  return " Every expert was once a beginner. Keep learning!";
 };
 
 // START ASSESSMENT:
@@ -324,26 +324,26 @@ exports.submitAssessment = async (req, res) => {
     // ✅ idempotency: already submitted
     if (attempt.status === "completed") {
       console.log("ℹ️ Attempt already completed. Returning existing result.");
-      
+
       // Calculate derived values for completed attempt
-         const percentage = calculatePercentage(skillIndex, 300);
-    const performanceTier = getPerformanceTier(percentage);
-    const topPercentile = getTopPercentile(percentage);
-    const achievementBadges = getAchievementBadges(percentage, attempt.integrity?.level);
-    const motivationalMessage = getMotivationalMessage(percentage);
+      const percentage = calculatePercentage(skillIndex, 300);
+      const performanceTier = getPerformanceTier(percentage);
+      const topPercentile = getTopPercentile(percentage);
+      const achievementBadges = getAchievementBadges(percentage, attempt.integrity?.level);
+      const motivationalMessage = getMotivationalMessage(percentage);
 
 
-       res.json({
-      attemptId,
-      skillIndex,
-      maxSkillIndex: 300,
-      percentage,
-      performanceTier,
-      topPercentile,
-      achievementBadges,
-      motivationalMessage,
-      integrity: attempt.integrity,
-    });
+      res.json({
+        attemptId,
+        skillIndex,
+        maxSkillIndex: 300,
+        percentage,
+        performanceTier,
+        topPercentile,
+        achievementBadges,
+        motivationalMessage,
+        integrity: attempt.integrity,
+      });
     }
 
     if (attempt.status !== "in_progress") {
@@ -459,13 +459,13 @@ exports.getLatestResult = async (req, res) => {
       });
     }
 
-     const percentage = calculatePercentage(attempt.skillIndex, 300);
+    const percentage = calculatePercentage(attempt.skillIndex, 300);
     const performanceTier = getPerformanceTier(percentage);
     const topPercentile = getTopPercentile(percentage);
     const achievementBadges = getAchievementBadges(percentage, attempt.integrity?.level);
     const motivationalMessage = getMotivationalMessage(percentage);
 
-     res.json({
+    res.json({
       attemptId: attempt._id,
       skillIndex: attempt.skillIndex,
       testStatus: attempt.testStatus,
@@ -615,7 +615,7 @@ exports.getAssessmentResultWithExperience = async (req, res) => {
 
     // Fetch demographics for location data
     const demographics = await Demographics.findOne({ userId }).lean();
-    
+
     // Fetch education for university name
     const education = await Education.findOne({ userId }).lean();
 
@@ -664,7 +664,7 @@ exports.getAssessmentResultWithExperience = async (req, res) => {
     // Prepare the combined response
     res.json({
       success: true,
-      
+
       // Assessment result data
       assessment: {
         attemptId: attempt._id,
@@ -712,9 +712,9 @@ exports.getAssessmentResultWithExperience = async (req, res) => {
 ///////////////////////////////////////////////////////////////
 
 const PENALTY = {
-  COPY: 10,
+  COPY: 15,
   PASTE: 15,
-  TAB_SWITCH: 5,
+  TAB_SWITCH: 10,
 };
 
 function getIntegrityLevel(score) {
