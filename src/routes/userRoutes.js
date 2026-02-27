@@ -305,7 +305,7 @@ router.put(
   "/certification/:id",
   protect,
   authorizeRoles("student"),
-  upload.single("file"),
+  upload.single("certificateFiles"),
   certificationController.updateCertification
 );
 
