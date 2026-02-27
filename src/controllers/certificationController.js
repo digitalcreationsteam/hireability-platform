@@ -36,7 +36,7 @@ const updateUserCertificationScore = async (userId) => {
 exports.createCertification = async (req, res) => {
   try {
     const userId = req.headers["user-id"] || req.user?._id || req.user?.id;
-    
+
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -44,19 +44,7 @@ exports.createCertification = async (req, res) => {
       });
     }
 
-    // ✅ CHECK MAX LIMIT (5 certifications)
-    const existingCount = await Certification.countDocuments({ userId });
-    const incomingCount = Array.isArray(req.body.certificationName)
-      ? req.body.certificationName.length
-      : 1;
-    
-    if (existingCount + incomingCount > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "You can add a maximum of 5 certifications only.",
-      });
-    }
-
+    // ✅ GUARD: reject empty or missing certificationName early
     const {
       certificationName = [],
       issuer = [],
@@ -64,14 +52,25 @@ exports.createCertification = async (req, res) => {
       credentialLink = [],
     } = req.body;
 
-    const files = req.files || [];
-
-    if (!certificationName.length) {
+    if (!Array.isArray(certificationName) || certificationName.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "At least one certification is required",
+        message: "certificationName must be a non-empty array",
       });
     }
+
+    // ✅ CHECK MAX LIMIT (5 certifications)
+    const existingCount = await Certification.countDocuments({ userId });
+    const incomingCount = certificationName.length;
+
+    if (existingCount + incomingCount > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "You can add a maximum of 5 certifications only.",
+      });
+    }
+
+    const files = req.files || [];
 
     const payload = certificationName.map((_, index) => {
       const file = files[index];
@@ -92,7 +91,6 @@ exports.createCertification = async (req, res) => {
     const savedCerts = await Certification.insertMany(payload);
     const score = await updateUserCertificationScore(userId);
 
-    // ✅ GET UPDATED NAVIGATION
     const completionStatus = await getCompletionStatus(userId);
     const navigation = calculateNavigation(completionStatus);
 
@@ -102,8 +100,9 @@ exports.createCertification = async (req, res) => {
       count: savedCerts.length,
       certificationScore: score,
       data: savedCerts,
-      navigation, // ← Frontend expects this
+      navigation,
     });
+
   } catch (error) {
     console.error("❌ Create certifications error:", error);
     return res.status(500).json({

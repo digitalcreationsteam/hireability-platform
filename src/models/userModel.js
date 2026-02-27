@@ -181,6 +181,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    skippedSteps: {
+      type: [String],
+      default: [],
+    }
   },
   {
     timestamps: true,
