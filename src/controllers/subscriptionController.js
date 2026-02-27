@@ -3,6 +3,7 @@ const SubscriptionPlan = require("../models/subscriptionPlanModel");
 const UserScore = require("../models/userScoreModel");
 const User = require("../models/userModel");
 const crypto = require("crypto");
+const planFeatureModel = require("../models/planFeatureModel");
 
 // =====================================
 // CREATE SUBSCRIPTION
@@ -221,7 +222,7 @@ exports.getAllPlans = async (req, res) => {
 
     const planIds = plans.map(plan => plan._id);
 
-    const planFeatures = await PlanFeature.find({
+    const planFeatures = await planFeatureModel.find({
       subscriptionPlanId: { $in: planIds },
     }).lean();
 
@@ -285,7 +286,7 @@ exports.getPlansByCurrency = async (req, res) => {
 
     const planIds = plans.map(plan => plan._id);
 
-    const planFeatures = await PlanFeature.find({
+    const planFeatures = await planFeatureModel.find({
       subscriptionPlanId: { $in: planIds },
     }).lean();
 
