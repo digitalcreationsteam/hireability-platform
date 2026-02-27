@@ -662,9 +662,12 @@ exports.getWeeklyAttempts = async (req, res) => {
       createdAt: { $gte: oneWeekAgo },
     });
 
+    const totalCaseStudies = await CaseStudy.countDocuments();
+
     res.status(200).json({
       success: true,
       totalAttempts: attempts.length,
+      totalCaseStudies,
       attempts, // optional: remove if only count needed
     });
   } catch (error) {
