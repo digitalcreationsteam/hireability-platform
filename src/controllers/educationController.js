@@ -1,6 +1,7 @@
 const Education = require("../models/educationModel");
 const User = require("../models/userModel");
 const UserScore = require("../models/userScoreModel"); // ✅ IMPORT UserScore model
+const Demographics = require("../models/demographicsModel");
 const { recalculateUserScore } = require("../services/recalculateUserScore");
 const { calculateNavigation, getCompletionStatus } = require("./authController");
 const universityMatching = require("../services/universityMatchingService");
@@ -308,6 +309,65 @@ exports.deleteEducation = async (req, res) => {
   }
 };
 
+// exports.getStudentsBySchool = async (req, res) => {
+//   try {
+//     const { schoolName } = req.query;
+
+//     if (!schoolName) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "School name is required",
+//       });
+//     }
+
+//     // Find best matching university
+//     const match = await universityMatching.findBestMatch(schoolName);
+
+//     // Search in UserScore (which stores normalized names)
+//     const searchQuery = match.confidence > 0.7
+//       ? match.matchedName
+//       : schoolName;
+
+//     const students = await UserScore.find({
+//       university: { $regex: searchQuery, $options: "i" }
+//     })
+//       .populate("userId", "firstname lastname email avatar")
+//       .sort({ hireabilityIndex: -1 })
+//       .lean();
+
+//     // Remove duplicates by user
+//     const uniqueStudents = [];
+//     const seenUserIds = new Set();
+
+//     students.forEach(student => {
+//       if (student.userId && !seenUserIds.has(student.userId._id.toString())) {
+//         seenUserIds.add(student.userId._id.toString());
+//         uniqueStudents.push(student);
+//       }
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       count: uniqueStudents.length,
+//       searchMetadata: {
+//         originalQuery: schoolName,
+//         matchedName: match.matchedName,
+//         confidence: match.confidence,
+//         matchType: match.matchType
+//       },
+//       data: uniqueStudents,
+//     });
+
+//   } catch (error) {
+//     console.error("❌ GET STUDENTS BY SCHOOL ERROR:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//     });
+//   }
+// };
+
+
 exports.getStudentsBySchool = async (req, res) => {
   try {
     const { schoolName } = req.query;
@@ -319,29 +379,54 @@ exports.getStudentsBySchool = async (req, res) => {
       });
     }
 
-    // Find best matching university
     const match = await universityMatching.findBestMatch(schoolName);
 
-    // Search in UserScore (which stores normalized names)
-    const searchQuery = match.confidence > 0.7
-      ? match.matchedName
-      : schoolName;
+    const searchQuery =
+      match.confidence > 0.7 ? match.matchedName : schoolName;
 
+    // 1️⃣ Get students from UserScore
     const students = await UserScore.find({
-      university: { $regex: searchQuery, $options: "i" }
+      university: { $regex: searchQuery, $options: "i" },
     })
-      .populate("userId", "firstname lastname email avatar")
       .sort({ hireabilityIndex: -1 })
       .lean();
 
-    // Remove duplicates by user
+    // 2️⃣ Get unique userIds
+    const userIds = [...new Set(students.map(s => s.userId.toString()))];
+
+    // 3️⃣ Fetch demographics for those users
+    const demographicsData = await Demographics.find({
+      userId: { $in: userIds },
+    }).lean();
+
+    // 4️⃣ Create lookup map
+    const demographicsMap = {};
+    demographicsData.forEach(d => {
+      demographicsMap[d.userId.toString()] = d;
+    });
+
+    // 5️⃣ Remove duplicates + attach demographics
     const uniqueStudents = [];
     const seenUserIds = new Set();
 
     students.forEach(student => {
-      if (student.userId && !seenUserIds.has(student.userId._id.toString())) {
-        seenUserIds.add(student.userId._id.toString());
-        uniqueStudents.push(student);
+      const userIdStr = student.userId.toString();
+
+      if (!seenUserIds.has(userIdStr)) {
+        seenUserIds.add(userIdStr);
+
+        const demo = demographicsMap[userIdStr];
+
+        uniqueStudents.push({
+          ...student,
+          fullName: demo?.fullName || null,
+          email: demo?.email || null,
+          phoneNumber:
+            demo?.phoneVisibleToRecruiters ? demo?.phoneNumber : null,
+          city: demo?.city || null,
+          state: demo?.state || null,
+          country: demo?.country || null,
+        });
       }
     });
 
@@ -352,11 +437,10 @@ exports.getStudentsBySchool = async (req, res) => {
         originalQuery: schoolName,
         matchedName: match.matchedName,
         confidence: match.confidence,
-        matchType: match.matchType
+        matchType: match.matchType,
       },
       data: uniqueStudents,
     });
-
   } catch (error) {
     console.error("❌ GET STUDENTS BY SCHOOL ERROR:", error);
     return res.status(500).json({
