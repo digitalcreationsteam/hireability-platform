@@ -137,7 +137,17 @@ const subscriptionSchema = new mongoose.Schema(
       type:    String,
       default: null,
     },
-
+dodoPaymentLink: {
+  type:   String,
+  index:  true,
+  sparse: true,
+},
+  dodoCheckoutUrl: {
+  type:   String,
+  default: null,
+  // One-time Dodo checkout URL (e.g. https://test.checkout.dodopayments.com/duQb5Shx)
+  // Stored for idempotent re-use — prevents duplicate Dodo subscriptions on double-click
+},
     // One entry per payment attempt
     invoices: [
       {

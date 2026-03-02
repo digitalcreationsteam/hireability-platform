@@ -109,6 +109,7 @@ exports.handleDodoWebhook = async (req, res) => {
     const metaOrderId        = metadata.order_id ?? null;
 
     console.log("📦 Webhook event data:", {
+      data,
       eventType,
       paymentId,
       productId:          productId          ?? "null (normal for payment.processing)",
@@ -320,7 +321,33 @@ exports.handleDodoWebhook = async (req, res) => {
         });
       }
     }
+if (!subscription && data.payment_link) {
+  // Strip query params — stored link is clean, webhook link may have params
+  const cleanLink = data.payment_link.split("?")[0];
 
+  subscription = await Subscription.findOne({
+    // dodoPaymentLink: cleanLink,
+    paymentStatus:   "pending",
+    dodoMode:        DODO_MODE,
+  })
+    .sort({ createdAt: -1 })
+    .populate("user", "email name")
+    .populate("plan", "planName billingPeriod");
+
+  if (subscription) {
+    // Stamp dodoSubscriptionId so all future webhooks hit Tier 2 directly
+    if (dodoSubscriptionId && !subscription.dodoSubscriptionId) {
+      subscription.dodoSubscriptionId = dodoSubscriptionId;
+      await subscription.save();
+    }
+    lookupMethod = "tier0-payment-link";
+    console.log("✅ Tier 0 HIT — matched by payment_link:", {
+      subscriptionId:    subscription._id,
+      dodoSubscriptionId,
+      paymentLink:       cleanLink,
+    });
+  }
+}
     if (!subscription) {
       console.error("❌ No matching subscription found across all 4 tiers:", {
         paymentId,

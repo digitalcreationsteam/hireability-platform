@@ -119,6 +119,7 @@ exports.createSubscription = async (req, res) => {
       paymentStatus: "pending",
       dodoOrderId:   orderId,
       dodoMode:      DODO_MODE,
+     dodoPaymentLink: dodoConfig.paymentLink,
     });
 
     console.log("✅ Subscription created:", {
@@ -130,6 +131,7 @@ exports.createSubscription = async (req, res) => {
       currency:      plan.currency,
       userId:        req.user._id,
       mode:          DODO_MODE,
+     dodoPaymentLink: dodoConfig.paymentLink,
     });
 
     return res.status(201).json({
