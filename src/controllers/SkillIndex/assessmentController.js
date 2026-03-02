@@ -617,7 +617,7 @@ exports.getAssessmentResultWithExperience = async (req, res) => {
     const demographics = await Demographics.findOne({ userId }).lean();
 
     // Fetch education for university name
-    const education = await Education.findOne({ userId }).lean();
+    const education = await Education.findOne({ userId }).sort({ createdAt: -1 }).lean();
 
     // Calculate assessment result values
     const percentage = calculatePercentage(attempt.skillIndex, 300);
