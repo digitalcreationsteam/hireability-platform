@@ -38,7 +38,7 @@ exports.getDashboardByUserId = async (req, res) => {
       latestAttempt
     ] = await Promise.all([
       Demographics.find({ userId }).lean(),
-      Education.find({ userId }).lean(),
+      Education.find({ userId }).sort({ createdAt: -1 }).lean(),
       WorkExperience.find({ userId }).lean(),
       Certification.find({ userId }).lean(),
       Award.find({ userId }).lean(),
