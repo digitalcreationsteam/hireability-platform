@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 
 const subscriptionPlanSchema = new mongoose.Schema(
   {
-    // Logical grouping
     planName: {
       type: String,
       enum: ["Free", "Basic", "Premium", "Enterprise"],
@@ -10,9 +9,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Product identity (DODO-style)
     productName: {
-      type: String, // e.g. "Basic USD"
+      type: String,
       required: true,
       unique: true,
     },
@@ -21,12 +19,6 @@ const subscriptionPlanSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    // features: {
-    //   type: [String], // Array of feature descriptions
-    //   required: true,
-    //   default: [],
-    // },
 
     features: {
       hackathonAccess: { type: Boolean, default: false },
@@ -42,6 +34,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
     price: {
       type: Number,
       required: true,
+      min: 0,
     },
 
     currency: {
@@ -60,8 +53,9 @@ const subscriptionPlanSchema = new mongoose.Schema(
     order: {
       type: Number,
       default: 0,
-    }, 
+    },
 
+    // Tracks which Dodo environment this plan was last used in
     dodoMode: {
       type: String,
       enum: ["test", "live"],
@@ -69,46 +63,23 @@ const subscriptionPlanSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Separate test/live configs — avoids ever mixing environments
     dodo: {
       test: {
-        productId: {
-          type: String,
-        },
-        paymentLink: {
-          type: String,
-        },
-        successUrl: {
-          type: String,
-        },
-        failedUrl: {
-          type: String,
-        },
-        cancelledUrl: {
-          type: String,
-        },
-        webhookSecret: {
-          type: String,
-        },
+        productId:    { type: String },
+        paymentLink:  { type: String },
+        successUrl:   { type: String },
+        failedUrl:    { type: String },
+        cancelledUrl: { type: String },
+        webhookSecret:{ type: String },
       },
       live: {
-        productId: {
-          type: String,
-        },
-        paymentLink: {
-          type: String,
-        },
-        successUrl: {
-          type: String,
-        },
-        failedUrl: {
-          type: String,
-        },
-        cancelledUrl: {
-          type: String,
-        },
-        webhookSecret: {
-          type: String,
-        },
+        productId:    { type: String },
+        paymentLink:  { type: String },
+        successUrl:   { type: String },
+        failedUrl:    { type: String },
+        cancelledUrl: { type: String },
+        webhookSecret:{ type: String },
       },
     },
   },
@@ -118,5 +89,5 @@ const subscriptionPlanSchema = new mongoose.Schema(
 module.exports = mongoose.model(
   "SubscriptionPlan",
   subscriptionPlanSchema,
-  "subscriptionPlan" 
+  "subscriptionPlan"
 );

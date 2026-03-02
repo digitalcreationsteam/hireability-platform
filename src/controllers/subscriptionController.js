@@ -5,87 +5,170 @@ const User = require("../models/userModel");
 const crypto = require("crypto");
 const planFeatureModel = require("../models/planFeatureModel");
 
-// =====================================
-// CREATE SUBSCRIPTION
-// =====================================
+
+// ─────────────────────────────────────────────
+// HELPER: resolve DODO_MODE once from env
+// ─────────────────────────────────────────────
+const getDodoMode = () =>
+  process.env.DODO_ENV === "live" ? "live" : "test";
+
+// =============================================
+// STEP 1 — CREATE SUBSCRIPTION
+// POST /api/subscriptions/create
+// Body: { planId }
+// =============================================
 exports.createSubscription = async (req, res) => {
   try {
+    console.log("📥 CREATE SUBSCRIPTION - Request received:", {
+      userId:    req.user?._id,
+      body:      req.body,
+      timestamp: new Date().toISOString(),
+    });
+
+    // ── Validate input ───────────────────────
     const { planId } = req.body;
-    
+
     if (!planId) {
-      return res.status(400).json({
-        success: false,
-        message: "planId is required",
-      });
+      console.warn("⚠️  Missing planId in request body");
+      return res.status(400).json({ success: false, message: "planId is required" });
     }
 
+    // ── Find plan ────────────────────────────
     const plan = await SubscriptionPlan.findById(planId);
+
     if (!plan) {
-      return res.status(404).json({
-        success: false,
-        message: "Plan not found",
-      });
+      console.warn("⚠️  Plan not found:", planId);
+      return res.status(404).json({ success: false, message: "Plan not found" });
     }
 
-    const DODO_MODE = process.env.DODO_ENV === "live" ? "live" : "test";
+    if (!plan.isActive) {
+      console.warn("⚠️  Plan is inactive:", plan.planName);
+      return res.status(400).json({ success: false, message: "This plan is currently unavailable" });
+    }
+
+    // ── Resolve Dodo config ──────────────────
+    const DODO_MODE = getDodoMode();
     const dodoConfig = plan.dodo?.[DODO_MODE];
-    
-    if (!dodoConfig || !dodoConfig.paymentLink) {
-      console.error(
-        `❌ No payment link configured for ${plan.planName} in ${DODO_MODE} mode`
-      );
+
+    if (!dodoConfig?.paymentLink) {
+      console.error("❌ No Dodo payment link configured:", {
+        planName: plan.planName,
+        mode:     DODO_MODE,
+      });
       return res.status(400).json({
         success: false,
-        message: `Payment link not configured for this plan in ${DODO_MODE} mode`,
+        message: `Payment link not configured for "${plan.planName}" in ${DODO_MODE} mode`,
       });
     }
 
+    // ── Block duplicate active / fresh-pending subscriptions ──
+    const existingActiveSub = await Subscription.findOne({
+      user:          req.user._id,
+      plan:          plan._id,
+      status:        { $in: ["active", "pending"] },
+      paymentStatus: { $nin: ["failed"] },
+    });
+
+    if (existingActiveSub) {
+      const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const isPendingAndStale =
+        existingActiveSub.status === "pending" &&
+        existingActiveSub.createdAt < tenMinAgo;
+
+      if (!isPendingAndStale) {
+        console.warn("⚠️  Duplicate subscription attempt blocked:", {
+          existingId:    existingActiveSub._id,
+          status:        existingActiveSub.status,
+          paymentStatus: existingActiveSub.paymentStatus,
+        });
+        return res.status(400).json({
+          success: false,
+          message:
+            existingActiveSub.status === "active"
+              ? "You already have an active subscription for this plan"
+              : "A payment is already in progress. Please complete it or wait 10 minutes.",
+          existingSubscriptionId: existingActiveSub._id,
+        });
+      }
+
+      // Stale pending — cancel it before creating fresh one
+      existingActiveSub.status    = "canceled";
+      existingActiveSub.canceledAt = new Date();
+      await existingActiveSub.save();
+      console.log("🔄 Stale pending subscription cancelled:", existingActiveSub._id);
+    }
+
+    // ── Generate unique order ID ─────────────
     const orderId = `ORD_${Date.now()}_${crypto
       .randomBytes(4)
-      .toString("hex")}`;
+      .toString("hex")
+      .toUpperCase()}`;
 
+    // ── Create subscription record ───────────
+    // NOTE: amount is intentionally NOT set here.
+    // It will be set from the real webhook data (data.total_amount) on payment.succeeded.
     const subscription = await Subscription.create({
-      user: req.user._id,
-      plan: plan._id,
-      planName: plan.planName,
-      productId: dodoConfig.productId || plan.productName,
-      currency: plan.currency,
+      user:          req.user._id,
+      plan:          plan._id,
+      planName:      plan.planName,
+      productId:     dodoConfig.productId,  // from plan.dodo[mode].productId
+      currency:      plan.currency,
       billingPeriod: plan.billingPeriod,
       paymentMethod: "dodo",
-      status: "pending",
+      status:        "pending",
       paymentStatus: "pending",
-      dodoOrderId: orderId,
-      dodoMode: DODO_MODE,
+      dodoOrderId:   orderId,
+      dodoMode:      DODO_MODE,
     });
 
-    console.log("✅ Subscription created in", DODO_MODE, "mode", {
+    console.log("✅ Subscription created:", {
       subscriptionId: subscription._id,
-      orderId: orderId,
-      planName: plan.planName,
-      productId: subscription.productId,
-      userId: req.user._id,
+      orderId,
+      planName:      plan.planName,
+      billingPeriod: plan.billingPeriod,
+      productId:     subscription.productId,
+      currency:      plan.currency,
+      userId:        req.user._id,
+      mode:          DODO_MODE,
     });
 
-    return res.json({
+    return res.status(201).json({
       success: true,
       data: {
         subscriptionId: subscription._id,
-        mode: DODO_MODE,
+        orderId,
+        mode:          DODO_MODE,
+        billingPeriod: plan.billingPeriod,
+        currency:      plan.currency,
       },
       message: "Subscription created successfully",
     });
+
   } catch (error) {
-    console.error("❌ CREATE SUB ERROR:", {
-      message: error.message,
-      stack: error.stack,
+    console.error("❌ CREATE SUBSCRIPTION ERROR:", {
+      message:   error.message,
+      stack:     error.stack,
+      userId:    req.user?._id,
+      timestamp: new Date().toISOString(),
     });
-    res.status(500).json({
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Duplicate order detected. Please try again.",
+      });
+    }
+
+    return res.status(500).json({
       success: false,
       message: "Unable to create subscription",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
+
+
+
 
 // =====================================
 // INITIATE DODO PAYMENT
