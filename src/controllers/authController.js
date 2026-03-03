@@ -151,7 +151,78 @@ exports.skipStep = async (req, res) => {
 // ============================================
 // NAVIGATION
 // ============================================
+// const calculateNavigation = (status) => {
+//   // ✅ HARD STOP: onboarding fully completed
+//   if (status["assessment-results"]) {
+//     return {
+//       nextRoute: "/dashboard",
+//       currentStep: "completed",
+//       completedSteps: STEP_SEQUENCE,
+//       hasPayment: status.paywall,
+//       isOnboardingComplete: true,
+//     };
+//   }
+
+//   // ✅ Normal onboarding flow
+//   const currentStep = STEP_SEQUENCE.find((step) => !status[step]);
+
+//   if (!currentStep) {
+//     return {
+//       nextRoute: "/assessment-results",
+//       currentStep: "assessment-results",
+//       completedSteps: STEP_SEQUENCE,
+//       hasPayment: status.paywall,
+//       isOnboardingComplete: false,
+//     };
+//   }
+
+//   const stepToRoute = {
+//     resume: "/upload-resume",
+//     demographics: "/demographics",
+//     education: "/education",
+//     experience: "/experience",
+//     certifications: "/certifications",
+//     awards: "/awards",
+//     projects: "/projects",
+//     "job-domain": "/job-domain",
+//     skills: "/skills",
+//     paywall: "/paywall",
+//     assessment: "/assessment",
+//     "assessment-results": "/assessment-results",
+//   };
+
+//   return {
+//     nextRoute: stepToRoute[currentStep],
+//     currentStep,
+//     completedSteps: STEP_SEQUENCE.filter((s) => status[s]),
+//     hasPayment: status.paywall,
+//     isOnboardingComplete: false,
+//   };
+// };
+
 const calculateNavigation = (status) => {
+
+  console.log("LinkedIn Status:", status);
+
+  // ✅ Redirect new Google users to Talent Ranking
+  const isFreshUser =
+  !status.resume &&
+  !status.demographics &&
+  !status.education &&
+  !status.experience &&
+  !status["job-domain"] &&
+  !status.skills;
+
+if (isFreshUser) {
+  return {
+    nextRoute: "/talent-ranking",
+    currentStep: "talent-ranking",
+    completedSteps: [],
+    hasPayment: status.paywall,
+    isOnboardingComplete: false,
+  };
+}
+
   // ✅ HARD STOP: onboarding fully completed
   if (status["assessment-results"]) {
     return {
@@ -163,7 +234,6 @@ const calculateNavigation = (status) => {
     };
   }
 
-  // ✅ Normal onboarding flow
   const currentStep = STEP_SEQUENCE.find((step) => !status[step]);
 
   if (!currentStep) {
