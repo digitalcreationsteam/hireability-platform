@@ -2,6 +2,8 @@ const UserScore = require("../models/userScoreModel");
 const UserDomainSkill = require("../models/userDomainSkillModel");
 const WorkExperience = require("../models/workModel");
 
+
+
 /**
  * Calculate years of experience from work history
  */
