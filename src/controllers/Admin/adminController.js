@@ -47,6 +47,42 @@ exports.getAdminDashboard = async (req, res) => {
 //     res.status(500).json({ success: false, message: error.message });
 //   }
 // };
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     const users = await User.find().select("-password").lean();
+
+//     const demographics = await demographicsModel.find().lean();
+//     const educations = await educationModel.find().lean();
+
+//     const enrichedUsers = users.map((u) => {
+//       const demo = demographics.find(
+//         (d) => d.userId?.toString() === u._id.toString()
+//       );
+
+//       const edu = educations.find(
+//         (e) => e.userId?.toString() === u._id.toString()
+//       );
+
+//       return {
+//         ...u,
+//         location: {
+//           country: demo?.country || null,
+//           city: demo?.city || null,
+//           university: edu?.schoolName || null,
+//         },
+//       };
+//     });
+
+//     res.json({
+//       success: true,
+//       count: enrichedUsers.length,
+//       users: enrichedUsers,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password").lean();
@@ -59,17 +95,26 @@ exports.getAllUsers = async (req, res) => {
         (d) => d.userId?.toString() === u._id.toString()
       );
 
-      const edu = educations.find(
-        (e) => e.userId?.toString() === u._id.toString()
-      );
+      // Get all education records for this user
+      const userEducations = educations
+        .filter((e) => e.userId?.toString() === u._id.toString())
+        .map((e) => ({
+          degree: e.degree,
+          fieldOfStudy: e.fieldOfStudy,
+          schoolName: e.schoolName,
+          startYear: e.startYear,
+          endYear: e.endYear,
+          currentlyStudying: e.currentlyStudying,
+          gpa: e.gpa,
+        }));
 
       return {
         ...u,
         location: {
           country: demo?.country || null,
           city: demo?.city || null,
-          university: edu?.schoolName || null,
         },
+        education: userEducations, // <-- attach all educations here
       };
     });
 
