@@ -719,7 +719,7 @@ const PENALTY = {
 
 function getIntegrityLevel(score) {
   if (score >= 90) return "Excellent";
-  if (score >= 75) return "Good";
+  if (score >= 75) return "Fair";
   if (score >= 60) return "Moderate";
   if (score >= 40) return "Low";
   return "High Risk";
