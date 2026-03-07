@@ -2,7 +2,12 @@ const UserScore = require("../models/userScoreModel");
 const UserDomainSkill = require("../models/userDomainSkillModel");
 const WorkExperience = require("../models/workModel");
 
-
+/**
+ * Calculate skill score based on skills array
+ */
+function calculateDomainSkillScore(skills) {
+  return (skills?.length || 0) * 10;
+}
 
 /**
  * Calculate years of experience from work history
@@ -10,6 +15,7 @@ const WorkExperience = require("../models/workModel");
 async function calculateYearsOfExperience(userId) {
   try {
     const workExperience = await WorkExperience.find({ userId }).lean();
+
     if (!workExperience || workExperience.length === 0) return 0;
 
     let totalMonths = 0;
@@ -18,12 +24,9 @@ async function calculateYearsOfExperience(userId) {
     workExperience.forEach(job => {
       if (job.startYear) {
         const startDate = new Date(job.startYear, 0);
-        const endDate = job.currentlyWorking
-          ? currentDate
-          : new Date(job.endYear || job.startYear, 11);
+        const endDate = job.currentlyWorking ? currentDate : new Date(job.endYear || job.startYear, 11);
 
-        const months =
-          (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
           (endDate.getMonth() - startDate.getMonth());
 
         totalMonths += Math.max(0, months);
@@ -56,27 +59,29 @@ exports.recalculateAllRanks = async (userId) => {
   try {
     console.log(`Recalculating all ranks for user: ${userId}`);
 
+    // Find the user score document
     const userScore = await UserScore.findOne({ userId });
     if (!userScore) {
       console.log(`No user score found for user: ${userId}`);
       return;
     }
 
-    // Use hireabilityIndex directly from UserScore
-    const hireabilityIndex = userScore.hireabilityIndex || 0;
+    // Calculate years of experience
     const yearsOfExperience = await calculateYearsOfExperience(userId);
     const experienceCohort = getCohortFromYears(yearsOfExperience);
 
+    // Get all domains this user is associated with
     const userDomains = await UserDomainSkill.find({ userId })
       .populate('domainId', 'name');
 
-    // skillScore is now driven by hireabilityIndex
+    // Calculate domain scores
     const domainScores = userDomains.map(ud => ({
       domainId: ud.domainId._id,
       domainName: ud.domainId.name,
-      skillScore: hireabilityIndex
+      skillScore: calculateDomainSkillScore(ud.skills)
     }));
 
+    // Update using updateOne to avoid triggering save hooks
     await UserScore.updateOne(
       { userId },
       {
@@ -88,16 +93,20 @@ exports.recalculateAllRanks = async (userId) => {
       }
     );
 
+    // Get the updated document for further operations
     const updatedUserScore = await UserScore.findOne({ userId });
 
+    // Recalculate primary domain ranks if exists
     if (updatedUserScore.primaryDomain) {
       await exports.recalculateDomainRanks(updatedUserScore.primaryDomain);
     }
 
+    // Recalculate all domain-specific ranks
     for (const domain of domainScores) {
       await exports.recalculateDomainRanks(domain.domainId);
     }
 
+    // Recalculate cohort-based ranks for primary domain
     if (updatedUserScore.primaryDomain && experienceCohort) {
       await exports.recalculateCohortRanks(
         updatedUserScore.primaryDomain,
@@ -106,6 +115,7 @@ exports.recalculateAllRanks = async (userId) => {
     }
 
     console.log(`Rank recalculation completed for user: ${userId}`);
+
   } catch (error) {
     console.error("Error in rank recalculation:", error);
     throw error;
@@ -123,14 +133,21 @@ exports.recalculateDomainRanks = async (domainId) => {
       "domainScores.domainId": domainId
     }).lean();
 
-    const usersWithScores = users.map(user => ({
-      userId: user._id,
-      score: user.hireabilityIndex || 0,  // ✅ directly from UserScore
-      domainScoreIndex: user.domainScores.findIndex(
+    // Sort users by their skill score for this domain
+    const usersWithScores = users.map(user => {
+      const domainScore = user.domainScores.find(
         ds => ds.domainId.toString() === domainId.toString()
-      )
-    })).sort((a, b) => b.score - a.score);
+      );
+      return {
+        userId: user._id,
+        score: domainScore ? domainScore.skillScore : 0,
+        domainScoreIndex: user.domainScores.findIndex(
+          ds => ds.domainId.toString() === domainId.toString()
+        )
+      };
+    }).sort((a, b) => b.score - a.score);
 
+    // Update ranks using bulk operations
     const bulkOps = usersWithScores.map((item, index) => ({
       updateOne: {
         filter: { _id: item.userId },
@@ -147,6 +164,7 @@ exports.recalculateDomainRanks = async (domainId) => {
     }
 
     console.log(`Domain ranks updated for ${bulkOps.length} users`);
+
   } catch (error) {
     console.error("Error in domain rank recalculation:", error);
     throw error;
@@ -163,13 +181,18 @@ async function updateDomainCohortRanks(domainId, cohort) {
       experienceCohort: cohort
     }).lean();
 
-    const usersWithScores = users.map(user => ({
-      userId: user._id,
-      score: user.hireabilityIndex || 0,  // ✅ directly from UserScore
-      domainScoreIndex: user.domainScores.findIndex(
+    const usersWithScores = users.map(user => {
+      const domainScore = user.domainScores.find(
         ds => ds.domainId.toString() === domainId.toString()
-      )
-    })).sort((a, b) => b.score - a.score);
+      );
+      return {
+        userId: user._id,
+        score: domainScore ? domainScore.skillScore : 0,
+        domainScoreIndex: user.domainScores.findIndex(
+          ds => ds.domainId.toString() === domainId.toString()
+        )
+      };
+    }).sort((a, b) => b.score - a.score);
 
     const bulkOps = usersWithScores.map((item, index) => ({
       updateOne: {
@@ -185,13 +208,18 @@ async function updateDomainCohortRanks(domainId, cohort) {
     if (bulkOps.length > 0) {
       await UserScore.bulkWrite(bulkOps);
     }
+
   } catch (error) {
     console.error("Error updating domain cohort ranks:", error);
   }
 }
 
 /**
+ * Recalculate cohort-based ranks for a specific domain + experience cohort
+ */
+/**
  * Helper: calculate percentile correctly
+ * Rank 1 of 1 → 100%, Rank 1 of 10 → 100%, Rank 10 of 10 → 0%
  */
 function calculatePercentile(rank, total) {
   if (!total || total <= 0) return 0;
@@ -206,9 +234,14 @@ exports.recalculateCohortRanks = async (domainId, cohort) => {
   try {
     console.log(`Recalculating cohort ranks for Domain: ${domainId}, Cohort: ${cohort}`);
 
-    const filter = { primaryDomain: domainId, experienceCohort: cohort };
+    const filter = {
+      primaryDomain: domainId,
+      experienceCohort: cohort
+    };
 
-    /* GLOBAL RANK + PERCENTILE */
+    /* --------------------------------
+       GLOBAL RANK + PERCENTILE
+    -------------------------------- */
     const globalUsers = await UserScore.find(filter)
       .sort({ hireabilityIndex: -1 })
       .lean();
@@ -230,87 +263,151 @@ exports.recalculateCohortRanks = async (domainId, cohort) => {
       };
     });
 
-    if (globalBulkOps.length > 0) await UserScore.bulkWrite(globalBulkOps);
+    if (globalBulkOps.length > 0) {
+      await UserScore.bulkWrite(globalBulkOps);
+    }
 
-    /* COUNTRY RANK + PERCENTILE */
+    /* --------------------------------
+       COUNTRY RANK + PERCENTILE
+    -------------------------------- */
     const countries = await UserScore.distinct("country", filter);
+
     for (const country of countries) {
       if (!country) continue;
+
       const users = await UserScore.find({ ...filter, country })
-        .sort({ hireabilityIndex: -1 }).lean();
+        .sort({ hireabilityIndex: -1 })
+        .lean();
+
       const total = users.length;
+
       const bulkOps = users.map((user, index) => {
         const rank = index + 1;
         return {
           updateOne: {
             filter: { _id: user._id },
-            update: { $set: { countryRank: rank, countryPercentile: calculatePercentile(rank, total) } }
+            update: {
+              $set: {
+                countryRank: rank,
+                countryPercentile: calculatePercentile(rank, total)
+              }
+            }
           }
         };
       });
-      if (bulkOps.length > 0) await UserScore.bulkWrite(bulkOps);
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
+      }
     }
 
-    /* STATE RANK + PERCENTILE */
+    /* --------------------------------
+       STATE RANK + PERCENTILE
+    -------------------------------- */
     const states = await UserScore.distinct("state", filter);
+
     for (const state of states) {
       if (!state) continue;
+
       const users = await UserScore.find({ ...filter, state })
-        .sort({ hireabilityIndex: -1 }).lean();
+        .sort({ hireabilityIndex: -1 })
+        .lean();
+
       const total = users.length;
+
       const bulkOps = users.map((user, index) => {
         const rank = index + 1;
         return {
           updateOne: {
             filter: { _id: user._id },
-            update: { $set: { stateRank: rank, statePercentile: calculatePercentile(rank, total) } }
+            update: {
+              $set: {
+                stateRank: rank,
+                statePercentile: calculatePercentile(rank, total)
+              }
+            }
           }
         };
       });
-      if (bulkOps.length > 0) await UserScore.bulkWrite(bulkOps);
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
+      }
     }
 
-    /* CITY RANK + PERCENTILE */
+    /* --------------------------------
+       CITY RANK + PERCENTILE
+    -------------------------------- */
     const cities = await UserScore.distinct("city", filter);
+
     for (const city of cities) {
       if (!city) continue;
+
       const users = await UserScore.find({ ...filter, city })
-        .sort({ hireabilityIndex: -1 }).lean();
+        .sort({ hireabilityIndex: -1 })
+        .lean();
+
       const total = users.length;
+
       const bulkOps = users.map((user, index) => {
         const rank = index + 1;
         return {
           updateOne: {
             filter: { _id: user._id },
-            update: { $set: { cityRank: rank, cityPercentile: calculatePercentile(rank, total) } }
+            update: {
+              $set: {
+                cityRank: rank,
+                cityPercentile: calculatePercentile(rank, total)
+              }
+            }
           }
         };
       });
-      if (bulkOps.length > 0) await UserScore.bulkWrite(bulkOps);
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
+      }
     }
 
-    /* UNIVERSITY RANK + PERCENTILE */
+    /* --------------------------------
+       UNIVERSITY RANK + PERCENTILE
+    -------------------------------- */
     const universities = await UserScore.distinct("university", filter);
+
     for (const university of universities) {
       if (!university) continue;
+
       const users = await UserScore.find({ ...filter, university })
-        .sort({ hireabilityIndex: -1 }).lean();
+        .sort({ hireabilityIndex: -1 })
+        .lean();
+
       const total = users.length;
+
       const bulkOps = users.map((user, index) => {
         const rank = index + 1;
         return {
           updateOne: {
             filter: { _id: user._id },
-            update: { $set: { universityRank: rank, universityPercentile: calculatePercentile(rank, total) } }
+            update: {
+              $set: {
+                universityRank: rank,
+                universityPercentile: calculatePercentile(rank, total)
+              }
+            }
           }
         };
       });
-      if (bulkOps.length > 0) await UserScore.bulkWrite(bulkOps);
+
+      if (bulkOps.length > 0) {
+        await UserScore.bulkWrite(bulkOps);
+      }
     }
 
+    // Update domain+cohort specific ranks
     await updateDomainCohortRanks(domainId, cohort);
 
     console.log(`Cohort ranks completed for ${domainId} - ${cohort}`);
+
   } catch (error) {
     console.error("Error in cohort rank recalculation:", error);
     throw error;
@@ -323,8 +420,17 @@ exports.recalculateCohortRanks = async (domainId, cohort) => {
 exports.recalculateAllDomainsAndCohorts = async () => {
   try {
     const combinations = await UserScore.aggregate([
-      { $match: { primaryDomain: { $ne: null } } },
-      { $group: { _id: { domain: "$primaryDomain", cohort: "$experienceCohort" } } }
+      {
+        $match: { primaryDomain: { $ne: null } }
+      },
+      {
+        $group: {
+          _id: {
+            domain: "$primaryDomain",
+            cohort: "$experienceCohort"
+          }
+        }
+      }
     ]);
 
     for (const combo of combinations) {
@@ -342,6 +448,7 @@ exports.recalculateAllDomainsAndCohorts = async () => {
     }
 
     console.log("All domain and cohort ranks recalculated successfully");
+
   } catch (error) {
     console.error("Error in full recalculation:", error);
     throw error;
